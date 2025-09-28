@@ -1,0 +1,23 @@
+# Social_Media_App
+---
+
+# 🛠️ Backend Project – Node.js + Express + MongoDB
+
+## 🔑 Environment Variables
+
+Create a `.env` file in the root directory and add the following variables:
+
+```env
+PORT=3000
+MOOD="DEV"
+DB_URI=Url_MongoDB
+SALT_ROUND=
+EMAIL=YOUR_Email
+APP_PASS=YOUR_PASSWORD
+ACCESS_USER_SIGNATURE=EXAMPLE"121AFF1BJ5V"
+REFRESH_USER_SIGNATURE=EXAMPLE"442RFFAJ5V"
+ACCESS_ADMIN_SIGNATURE=EXAMPLE"5819HAKCB1"
+REFRESH_ADMIN_SIGNATURE=EXAMPLE"7AUDHV7QL"
+ACCESS_EXPIRES_IN=2600 
+REFRESH_EXPIRES_IN=3500 
+```

@@ -1,7 +1,12 @@
-import type { Request, Response } from "express";
-import { IConfirmEmailDTO, ILoginDTO, ISignupDTO } from "./auth.dto";
+import { type Request, type Response } from "express";
+import {
+  IConfirmEmailDTO,
+  ILoginDTO,
+  ISignupDTO,
+  ISignupGmail,
+} from "./auth.dto";
 import { UserRepository } from "../../DB/repositories/user.db.repository";
-import { UserModel } from "../../DB/models/User.model";
+import { ProviderEnum, UserModel } from "../../DB/models/User.model";
 import {
   BadRequestExceptions,
   ConflictExceptions,
@@ -12,12 +17,86 @@ import { emailEvent } from "../../utils/events/email.event";
 import { generateOTP } from "../../utils/security/generateOTP.utils";
 import successResponse from "../../utils/successResponse";
 import { createLoginCredentials } from "../../utils/security/token.utils";
+import { OAuth2Client, type TokenPayload } from "google-auth-library";
 
 class AuthenticationService {
   private _userModel = new UserRepository(UserModel);
 
   constructor() {}
+  // signup with gmail
+  private async verifyGmailAccount(idToken: string): Promise<TokenPayload> {
+    const client = new OAuth2Client();
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.WEB_CLIENT_IDS?.split(",") || [],
+    });
+    const payload = ticket.getPayload();
+    if (!payload?.email_verified)
+      throw new BadRequestExceptions("fail to verify this google account");
+    return payload;
+  }
+  signupWithGmail = async (req: Request, res: Response): Promise<Response> => {
+    const { idToken }: ISignupGmail = req.body;
+    const { email, name, picture } = await this.verifyGmailAccount(idToken);
+    const user = await this._userModel.findOne({
+      filter: { email },
+    });
 
+    if (user) {
+      if (user.provider === ProviderEnum.google) {
+        return await this.loginWithGmail(req, res);
+      }
+      throw new ConflictExceptions(
+        "Email already exist with another provider",
+        { cause: { User_Provider: user.provider } }
+      );
+    }
+
+    if (!email) {
+      throw new BadRequestExceptions(
+        "Google account does not provide an email"
+      );
+    }
+
+    const [newUser] =
+      (await this._userModel.create({
+        data: [
+          {
+            email,
+            fullName: name as string,
+            profileImage: picture as string,
+            confirmEmailAt: new Date(),
+            provider: ProviderEnum.google,
+          },
+        ],
+      })) || [];
+    if (!newUser)
+      throw new BadRequestExceptions(
+        "Fail to signup with gmail pleas try again later"
+      );
+    const { accessToken, refreshToken } = await createLoginCredentials(newUser);
+    return successResponse({
+      res,
+      statusCode: 201,
+      data: { accessToken, refreshToken },
+    });
+  };
+  // Login With Gmail
+  loginWithGmail = async (req: Request, res: Response): Promise<Response> => {
+    const { idToken }: ISignupGmail = req.body;
+    const { email } = await this.verifyGmailAccount(idToken);
+    const user = await this._userModel.findOne({
+      filter: { email, provider: ProviderEnum.google },
+    });
+    if (!user)
+      throw new NotFoundExceptions(
+        "Not register account or registered with another provider"
+      );
+    const { accessToken, refreshToken } = await createLoginCredentials(user);
+    return successResponse({ res, data: { accessToken, refreshToken } });
+  };
+
+  //signup
   signup = async (req: Request, res: Response): Promise<Response> => {
     const { fullName, email, password }: ISignupDTO = req.body;
 
@@ -59,7 +138,7 @@ class AuthenticationService {
   login = async (req: Request, res: Response): Promise<Response> => {
     const { email, password }: ILoginDTO = req.body;
     const user = await this._userModel.findOne({
-      filter: { email },
+      filter: { email, provider: ProviderEnum.system },
       options: { lean: true },
     });
     if (!user) throw new NotFoundExceptions("In-valid email or password");
@@ -72,11 +151,15 @@ class AuthenticationService {
     if (!(await comparHash(password, user.password)))
       throw new BadRequestExceptions("In-valid email or password");
 
-    const {accessToken , refreshToken} = await createLoginCredentials(user)
+    const { accessToken, refreshToken } = await createLoginCredentials(user);
 
-    return successResponse({ res  , data: {
-      accessToken , refreshToken
-    } });
+    return successResponse({
+      res,
+      data: {
+        accessToken,
+        refreshToken,
+      },
+    });
   };
 
   //confirm Email

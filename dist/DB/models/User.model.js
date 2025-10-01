@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UserModel = exports.LogoutEnum = exports.RoleEnum = exports.GenderEnum = void 0;
+exports.UserModel = exports.LogoutEnum = exports.ProviderEnum = exports.RoleEnum = exports.GenderEnum = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 var GenderEnum;
 (function (GenderEnum) {
@@ -15,6 +15,11 @@ var RoleEnum;
     RoleEnum["user"] = "User";
     RoleEnum["admin"] = "Admin";
 })(RoleEnum || (exports.RoleEnum = RoleEnum = {}));
+var ProviderEnum;
+(function (ProviderEnum) {
+    ProviderEnum["google"] = "Google";
+    ProviderEnum["system"] = "System";
+})(ProviderEnum || (exports.ProviderEnum = ProviderEnum = {}));
 var LogoutEnum;
 (function (LogoutEnum) {
     LogoutEnum["only"] = "Only";
@@ -29,7 +34,6 @@ const userSchema = new mongoose_1.default.Schema({
     },
     lastName: {
         type: String,
-        required: [true, "Last name is required"],
         minlength: [2, "Last name must be at least 2 characters long"],
         maxlength: [20, "Last name cannot exceed 20 characters"],
     },
@@ -42,28 +46,31 @@ const userSchema = new mongoose_1.default.Schema({
     confirmEmailOTP: String,
     password: {
         type: String,
-        required: true,
+        required: function () {
+            return this.provider === ProviderEnum.system ? true : false;
+        },
     },
     resetPasswordOTP: String,
     changeCredentialsTime: Date,
+    provider: {
+        type: String,
+        enum: ProviderEnum,
+        default: ProviderEnum.system,
+    },
     gender: {
         type: String,
-        enum: {
-            values: Object.values(GenderEnum),
-            message: `gender only allow ${Object.values(GenderEnum)}`,
-        },
+        enum: GenderEnum,
         default: GenderEnum.male,
     },
     role: {
         type: String,
-        enum: {
-            values: Object.values(RoleEnum),
-            message: `gender only allow ${Object.values(RoleEnum)}`,
-        },
+        enum: RoleEnum,
         default: RoleEnum.user,
     },
     phone: String,
     address: String,
+    profileImage: String,
+    coverImages: [String],
 }, {
     timestamps: true,
     toJSON: { virtuals: true },

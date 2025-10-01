@@ -4,16 +4,18 @@ export enum GenderEnum {
   male = "male",
   female = "female",
 }
-
 export enum RoleEnum {
   user = "User",
   admin = "Admin",
+}
+export enum ProviderEnum {
+  google = "Google",
+  system = "System",
 }
 export enum LogoutEnum {
   only = "Only",
   all = "All",
 }
-
 export interface IUser {
   _id: mongoose.Types.ObjectId;
   firstName: string;
@@ -28,15 +30,18 @@ export interface IUser {
   resetPasswordOTP?: string;
   changeCredentialsTime?: Date;
 
+  provider: ProviderEnum;
   gender?: GenderEnum;
   role: RoleEnum;
+
+  phone?: string;
+  address?: string;
+  profileImage?: string;
+  coverImages?: [];
 
   createdAt: Date;
   updatedAt?: Date;
   __v?: number;
-
-  phone?: string;
-  address?: string;
 }
 
 const userSchema = new mongoose.Schema<IUser>(
@@ -50,7 +55,6 @@ const userSchema = new mongoose.Schema<IUser>(
     },
     lastName: {
       type: String,
-      required: [true, "Last name is required"],
       minlength: [2, "Last name must be at least 2 characters long"],
       maxlength: [20, "Last name cannot exceed 20 characters"],
     },
@@ -63,28 +67,31 @@ const userSchema = new mongoose.Schema<IUser>(
     confirmEmailOTP: String,
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return this.provider === ProviderEnum.system ? true : false;
+      },
     },
     resetPasswordOTP: String,
     changeCredentialsTime: Date,
+    provider: {
+      type: String,
+      enum: ProviderEnum,
+      default: ProviderEnum.system,
+    },
     gender: {
       type: String,
-      enum: {
-        values: Object.values(GenderEnum),
-        message: `gender only allow ${Object.values(GenderEnum)}`,
-      },
+      enum: GenderEnum,
       default: GenderEnum.male,
     },
     role: {
       type: String,
-      enum: {
-        values: Object.values(RoleEnum),
-        message: `gender only allow ${Object.values(RoleEnum)}`,
-      },
+      enum: RoleEnum,
       default: RoleEnum.user,
     },
     phone: String,
     address: String,
+    profileImage: String,
+    coverImages: [String],
   },
   // options
   {
@@ -110,4 +117,4 @@ export const UserModel =
   mongoose.models.User || mongoose.model<IUser>("User", userSchema);
 
 // 2
-export type HUserModel = HydratedDocument<IUser>
+export type HUserModel = HydratedDocument<IUser>;

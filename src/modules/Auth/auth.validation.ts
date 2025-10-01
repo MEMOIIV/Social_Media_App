@@ -34,3 +34,10 @@ export const confirmEmailSchema = {
     otp: generalField.otp,
   }),
 };
+
+// Signup With Gmail
+export const signupWithGmailSchema = {
+  body: z.strictObject({
+    idToken: z.string()
+  }),
+};

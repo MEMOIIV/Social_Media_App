@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.confirmEmailSchema = exports.signupSchema = exports.loginSchema = void 0;
+exports.signupWithGmailSchema = exports.confirmEmailSchema = exports.signupSchema = exports.loginSchema = void 0;
 const zod_1 = __importDefault(require("zod"));
 const validationMiddleware_1 = require("../../middleware/validationMiddleware");
 exports.loginSchema = {
@@ -32,5 +32,10 @@ exports.confirmEmailSchema = {
     body: zod_1.default.strictObject({
         email: validationMiddleware_1.generalField.email,
         otp: validationMiddleware_1.generalField.otp,
+    }),
+};
+exports.signupWithGmailSchema = {
+    body: zod_1.default.strictObject({
+        idToken: zod_1.default.string()
     }),
 };

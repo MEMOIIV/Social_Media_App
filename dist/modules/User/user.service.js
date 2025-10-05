@@ -7,6 +7,8 @@ const successResponse_1 = __importDefault(require("../../utils/successResponse")
 const User_model_1 = require("../../DB/models/User.model");
 const user_db_repository_1 = require("../../DB/repositories/user.db.repository");
 const token_utils_1 = require("../../utils/security/token.utils");
+const s3_config_1 = require("../../utils/multer/s3.config");
+const cloud_multer_1 = require("../../utils/multer/cloud.multer");
 class UserService {
     _userModel = new user_db_repository_1.UserRepository(User_model_1.UserModel);
     constructor() { }
@@ -46,6 +48,31 @@ class UserService {
         const newCredentials = await (0, token_utils_1.createLoginCredentials)(req.user);
         await (0, token_utils_1.revokeToken)(req.decoded);
         return (0, successResponse_1.default)({ res, data: newCredentials, statusCode: 201 });
+    };
+    profileImage = async (req, res) => {
+        const key = await (0, s3_config_1.uploadLargeFile)({
+            file: req.file,
+            path: `users/${req.decoded?._id}`,
+        });
+        return (0, successResponse_1.default)({
+            res,
+            statusCode: 201,
+            message: "Profile image upload successfully",
+            data: { key },
+        });
+    };
+    profileCoverImage = async (req, res) => {
+        const urls = await (0, s3_config_1.uploadFiles)({
+            storageApproach: cloud_multer_1.StorageEnum.disk,
+            files: req.files,
+            path: `users/${req.decoded?._id}/cover`,
+        });
+        return (0, successResponse_1.default)({
+            res,
+            statusCode: 201,
+            message: "Profile image upload successfully",
+            data: { urls },
+        });
     };
 }
 exports.default = new UserService();

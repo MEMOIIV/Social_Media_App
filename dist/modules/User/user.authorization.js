@@ -6,4 +6,5 @@ exports.endPoint = {
     profile: [User_model_1.RoleEnum.user, User_model_1.RoleEnum.admin],
     logout: [User_model_1.RoleEnum.user, User_model_1.RoleEnum.admin],
     refreshToken: [User_model_1.RoleEnum.user, User_model_1.RoleEnum.admin],
+    profileImage: [User_model_1.RoleEnum.user, User_model_1.RoleEnum.admin],
 };

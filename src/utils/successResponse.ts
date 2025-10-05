@@ -9,7 +9,7 @@ const successResponse = ({
   res: Response;
   message?: string;
   statusCode?: number;
-  data?:object | null
+  data?:object | null | undefined
 }) => {
   return res.status(statusCode).json({ message, data });
 };

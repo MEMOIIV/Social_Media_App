@@ -6,3 +6,5 @@ export const logoutSchema = {
         flag:z.enum(LogoutEnum).default(LogoutEnum.only)
     })
 }
+
+// export const fileSchema

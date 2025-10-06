@@ -50,15 +50,17 @@ class UserService {
         return (0, successResponse_1.default)({ res, data: newCredentials, statusCode: 201 });
     };
     profileImage = async (req, res) => {
-        const key = await (0, s3_config_1.uploadLargeFile)({
-            file: req.file,
+        const { ContentType, originalname } = req.body;
+        const { url, Key } = await (0, s3_config_1.createPreSignedURL)({
+            ContentType,
+            originalname,
             path: `users/${req.decoded?._id}`,
         });
         return (0, successResponse_1.default)({
             res,
             statusCode: 201,
             message: "Profile image upload successfully",
-            data: { key },
+            data: { url, Key },
         });
     };
     profileCoverImage = async (req, res) => {

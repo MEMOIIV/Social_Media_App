@@ -2,12 +2,15 @@ import {
   S3Client,
   PutObjectCommand,
   ObjectCannedACL,
-} from "@aws-sdk/client-s3";
+  GetObjectAclCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3"; // upload file
 import { StorageEnum } from "./cloud.multer";
 import { v4 as uuid } from "uuid";
 import { createReadStream } from "node:fs";
 import { BadRequestExceptions } from "../response/err.response";
-import { Upload } from "@aws-sdk/lib-storage";
+import { Upload } from "@aws-sdk/lib-storage"; // upload Large file
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const s3Config = () => {
   return new S3Client({
@@ -118,4 +121,49 @@ export const uploadFiles = async ({
     })
   );
   return urls;
+};
+
+// PreSignedURL
+export const createPreSignedURL = async ({
+  Bucket = process.env.AWS_BUCKET_NAME as string,
+  path = "general",
+  ContentType,
+  originalname,
+  expiresIn = 120,
+}: {
+  Bucket?: string;
+  path?: string;
+  ContentType: string;
+  originalname: string;
+  expiresIn?: number;
+}) => {
+  const command = new PutObjectCommand({
+    Bucket,
+    Key: `${
+      process.env.APPLICATION_NAME
+    }/${path}/${uuid()}-preSigned-${originalname}`,
+    ContentType,
+  });
+
+  const url = await getSignedUrl(s3Config(), command, { expiresIn });
+
+  if (!url || !command?.input?.Key)
+    throw new BadRequestExceptions("fail to generate presignedURL");
+
+  return { url, Key: command.input.Key };
+};
+
+// Get asset
+export const getFile = async ({
+  Bucket = process.env.AWS_BUCKET_NAME as string,
+  Key,
+}: {
+  Bucket?: string;
+  Key: string;
+}) => {
+  const command = new GetObjectCommand({
+    Bucket,
+    Key,
+  });
+  return s3Config().send(command);
 };

@@ -7,4 +7,11 @@ export const logoutSchema = {
     })
 }
 
+export const PresignedURL = {
+    body:z.strictObject({
+        ContentType: z.string(),
+        originalname: z.string(),
+    })
+}
+
 // export const fileSchema

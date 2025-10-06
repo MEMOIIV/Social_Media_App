@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import successResponse from "../../utils/successResponse";
-import { ILogoutDTO } from "./user.dto";
+import { ILogoutDTO, IPresignedURL } from "./user.dto";
 import {
   HUserModel,
   IUser,
@@ -15,6 +15,7 @@ import {
 } from "../../utils/security/token.utils";
 import { JwtPayload } from "jsonwebtoken";
 import {
+  createPreSignedURL,
   uploadFile,
   uploadFiles,
   uploadLargeFile,
@@ -84,11 +85,19 @@ class UserService {
 
     // upload large size file
 
-    const key = await uploadLargeFile({
-      file: req.file as Express.Multer.File,
+    // const key = await uploadLargeFile({
+    //   file: req.file as Express.Multer.File,
+    //   path: `users/${req.decoded?._id}`,
+    // });
+
+    // use preSignedURL
+    const { ContentType, originalname }: IPresignedURL = req.body;
+    const { url, Key } = await createPreSignedURL({
+      ContentType,
+      originalname,
       path: `users/${req.decoded?._id}`,
     });
-
+    
     // update user
 
     // const user = await this._userModel.updateOne({
@@ -100,7 +109,7 @@ class UserService {
       res,
       statusCode: 201,
       message: "Profile image upload successfully",
-      data: { key },
+      data: { url, Key },
     });
   };
 

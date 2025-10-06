@@ -1,7 +1,10 @@
 import express from "express";
 import { type Express, type Request, type Response } from "express";
 import rateLimit, { type RateLimitRequestHandler } from "express-rate-limit";
-import { globalErrorHandler } from "./utils/response/err.response";
+import {
+  BadRequestExceptions,
+  globalErrorHandler,
+} from "./utils/response/err.response";
 import connectDB from "./DB/connection.db";
 import authRouter from "./modules/Auth/auth.controller";
 import userRouter from "./modules/User/user.controller";
@@ -10,6 +13,11 @@ import path from "node:path";
 import cors from "cors";
 import helmet from "helmet";
 import chalk from "chalk";
+import { promisify } from "node:util";
+import { pipeline } from "node:stream";
+import { getFile } from "./utils/multer/s3.config";
+
+const createS3WriteStreamPipe = promisify(pipeline);
 
 config({ path: path.resolve("./config/.env.dev") });
 
@@ -26,13 +34,38 @@ export const bootstrap = async (): Promise<void> => {
   const app: Express = express();
   const port: number = Number(process.env.PORT as string) || 5000;
   app.use(cors(), express.json(), helmet(), limiter); // Global Middleware
-  
+
   // DB
   await connectDB();
 
   // Router
   app.get("/", (req: Request, res: Response) => {
     res.status(200).json({ message: "Welcome to social media app from TS" });
+  });
+
+  // get asset
+  app.get("/upload/*path", async (req: Request, res: Response) => {
+    const { downloadName } = req.query;
+    const { path } = req.params as unknown as { path: string[] };
+    const Key = path.join("/");
+    const s3Response = await getFile({ Key });
+    if (!s3Response?.Body) throw new BadRequestExceptions("Fail to get asset");
+    res.setHeader(
+      "Content-Type",
+      `${s3Response.ContentType}` || "application/octet-stream"
+    );
+    
+    if (downloadName) {
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${downloadName}.${path[path.length -1]?.split(".")[1]}"`
+      );
+    }
+
+    return createS3WriteStreamPipe(
+      s3Response.Body as NodeJS.ReadableStream,
+      res
+    );
   });
 
   app.use("/api/auth", authRouter);

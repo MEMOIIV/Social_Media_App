@@ -1,4 +1,8 @@
 import mongoose, { HydratedDocument } from "mongoose";
+import { required } from "zod/v4/core/util.cjs";
+import { BadRequestExceptions } from "../../utils/response/err.response";
+import { generateHash } from "../../utils/security/hash.utils";
+import { emailEvent } from "../../utils/events/email.event";
 
 export enum GenderEnum {
   male = "male",
@@ -21,6 +25,7 @@ export interface IUser {
   firstName: string;
   lastName: string;
   fullName?: string;
+  slug: string;
 
   email: string;
   confirmEmailAt: Date;
@@ -57,6 +62,12 @@ const userSchema = new mongoose.Schema<IUser>(
       type: String,
       minlength: [2, "Last name must be at least 2 characters long"],
       maxlength: [20, "Last name cannot exceed 20 characters"],
+    },
+    slug: {
+      type: String,
+      required: true,
+      minlength: 3,
+      maxlength: 41, // 20 fr +  20 la + and 1 space
     },
     email: {
       type: String,
@@ -106,15 +117,40 @@ userSchema
   .virtual("fullName")
   .set(function (val: string) {
     const [firstName, lastName] = val?.split(" ") || [];
-    this.set({ firstName, lastName });
+    this.set({ firstName, lastName, slug: val.replaceAll(/\s+/g, "-") });
     return;
   })
   .get(function () {
-    return this.firstName + " " + this.lastName;
+    return ` ${this.firstName} ${this.lastName}`;
   });
 
+// middleware
+userSchema.pre("validate", function (next) {
+  if (!this.slug?.includes("-")) {
+    throw new BadRequestExceptions(
+      "Slug is required and must hold - like example : first-name-last-name"
+    );
+  }
+  next();
+});
+
+userSchema.pre("save", async function (this: HUserModel & {wasNew : boolean} , next) {
+  this.wasNew = this.isNew
+  console.log("Pre Hook" , this.wasNew);
+  if (this.isModified("password")) {
+    this.password = await generateHash(this.password);
+  }
+});
+
+userSchema.post("save", function (doc , next) {
+  const that =this as HUserModel & {wasNew : boolean}
+  console.log(that.wasNew);
+  if(that.wasNew){
+    emailEvent.emit("confirmEmail", {to:this.email , otp :123456})
+  }
+});
+
+// compiling Model
 export const UserModel =
   mongoose.models.User || mongoose.model<IUser>("User", userSchema);
-
-// 2
 export type HUserModel = HydratedDocument<IUser>;

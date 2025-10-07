@@ -66,7 +66,7 @@ const createLoginCredentials = async (user) => {
     const accessToken = await (0, exports.generateToken)({
         payload: { _id: user._id, email: user.email, name: user.firstName },
         secretKey: signature.access_signature,
-        options: { jwtid },
+        options: { expiresIn: Number(process.env.ACCESS_EXPIRES_IN), jwtid },
     });
     const refreshToken = await (0, exports.generateToken)({
         payload: { _id: user._id, email: user.email, name: user.firstName },

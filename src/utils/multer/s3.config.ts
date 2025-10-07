@@ -3,6 +3,12 @@ import {
   PutObjectCommand,
   ObjectCannedACL,
   GetObjectCommand,
+  DeleteObjectCommand,
+  DeleteObjectCommandOutput,
+  GetObjectCommandOutput,
+  DeleteObjectsCommand,
+  DeleteObjectsCommandOutput,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3"; // upload file
 import { StorageEnum } from "./cloud.multer";
 import { v4 as uuid } from "uuid";
@@ -47,7 +53,7 @@ export const uploadFile = async ({
     ContentType: file.mimetype,
   });
 
-  await s3Config().send(command);
+  s3Config().send(command);
 
   if (!command?.input?.Key)
     throw new BadRequestExceptions("fail to upload file");
@@ -127,20 +133,20 @@ export const createPreSignedURL = async ({
   Bucket = process.env.AWS_BUCKET_NAME as string,
   path = "general",
   ContentType,
-  originalname,
+  Originalname,
   expiresIn = 120,
 }: {
   Bucket?: string;
   path?: string;
   ContentType: string;
-  originalname: string;
+  Originalname: string;
   expiresIn?: number;
-}) => {
+}): Promise<{ url: string; Key: string }> => {
   const command = new PutObjectCommand({
     Bucket,
     Key: `${
       process.env.APPLICATION_NAME
-    }/${path}/${uuid()}-preSigned-${originalname}`,
+    }/${path}/${uuid()}-preSigned-${Originalname}`,
     ContentType,
   });
 
@@ -165,15 +171,16 @@ export const createGetPreSignedURL = async ({
   Key: string;
   downloadName?: string;
   download?: string;
-  path?:string;
+  path?: string;
   expiresIn?: number;
-}) => {
-
+}): Promise<string> => {
   const command = new GetObjectCommand({
     Bucket,
     Key,
     ResponseContentDisposition:
-      download === "true" ? `attachment;filename=${downloadName}.${path}` : undefined,
+      download === "true"
+        ? `attachment;filename=${downloadName}.${path}`
+        : undefined,
   });
 
   const url = await getSignedUrl(s3Config(), command, { expiresIn });
@@ -190,10 +197,91 @@ export const getFile = async ({
 }: {
   Bucket?: string;
   Key: string;
-}) => {
+}): Promise<GetObjectCommandOutput> => {
   const command = new GetObjectCommand({
     Bucket,
     Key,
   });
   return s3Config().send(command);
+};
+
+// Delete File
+export const deleteFile = async ({
+  Bucket = process.env.AWS_BUCKET_NAME as string,
+  Key,
+}: {
+  Bucket?: string;
+  Key: string;
+}): Promise<DeleteObjectCommandOutput> => {
+  const command = new DeleteObjectCommand({
+    Bucket,
+    Key,
+  });
+
+  return s3Config().send(command);
+};
+
+// Delete Files
+export const deleteFiles = async ({
+  Bucket = process.env.AWS_BUCKET_NAME as string,
+  urls,
+  Quiet = false,
+}: {
+  Bucket?: string;
+  urls: string[];
+  Quiet?: boolean;
+}): Promise<DeleteObjectsCommandOutput> => {
+  // Objects = [{Key:""} , {Key:""}]
+  const Objects = urls.map((url) => {
+    return { Key: url };
+  });
+
+  const command = new DeleteObjectsCommand({
+    Bucket,
+    Delete: {
+      Objects,
+      Quiet,
+    },
+  });
+
+  return s3Config().send(command);
+};
+
+// select files into folder
+export const listDirectoryFiles = async ({
+  Bucket = process.env.AWS_BUCKET_NAME as string,
+  path,
+}: {
+  Bucket?: string;
+  path: string;
+}) => {
+  const command = new ListObjectsV2Command({
+    Bucket,
+    Prefix: `${process.env.APPLICATION_NAME}/${path}`,
+  });
+
+  return s3Config().send(command);
+};
+
+// Delete Folder
+export const deleteFolderByPrefix = async ({
+  Bucket = process.env.AWS_BUCKET_NAME as string,
+  path,
+  Quiet = false,
+}: {
+  Bucket?: string;
+  path: string;
+  Quiet?: boolean;
+}): Promise<DeleteObjectsCommandOutput> => {
+
+  const fileList = await listDirectoryFiles({ Bucket, path });
+
+  if (!fileList?.Contents?.length)
+    throw new BadRequestExceptions("Empty directory");
+
+  const urls: string[] = fileList.Contents.map((file) => {
+    return file.Key as string;
+  });
+
+  return await deleteFiles({ urls  , Bucket , Quiet});
 };

@@ -14,6 +14,6 @@ exports.logoutSchema = {
 exports.PresignedURL = {
     body: zod_1.default.strictObject({
         ContentType: zod_1.default.string(),
-        originalname: zod_1.default.string(),
+        Originalname: zod_1.default.string(),
     })
 };

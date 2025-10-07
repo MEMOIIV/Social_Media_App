@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFile = exports.createGetPreSignedURL = exports.createPreSignedURL = exports.uploadFiles = exports.uploadLargeFile = exports.uploadFile = exports.s3Config = void 0;
+exports.deleteFolderByPrefix = exports.listDirectoryFiles = exports.deleteFiles = exports.deleteFile = exports.getFile = exports.createGetPreSignedURL = exports.createPreSignedURL = exports.uploadFiles = exports.uploadLargeFile = exports.uploadFile = exports.s3Config = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const cloud_multer_1 = require("./cloud.multer");
 const uuid_1 = require("uuid");
@@ -28,7 +28,7 @@ const uploadFile = async ({ storageApproach = cloud_multer_1.StorageEnum.memory,
             : (0, node_fs_1.createReadStream)(file.path),
         ContentType: file.mimetype,
     });
-    await (0, exports.s3Config)().send(command);
+    (0, exports.s3Config)().send(command);
     if (!command?.input?.Key)
         throw new err_response_1.BadRequestExceptions("fail to upload file");
     return command.input.Key;
@@ -70,10 +70,10 @@ const uploadFiles = async ({ storageApproach = cloud_multer_1.StorageEnum.memory
     return urls;
 };
 exports.uploadFiles = uploadFiles;
-const createPreSignedURL = async ({ Bucket = process.env.AWS_BUCKET_NAME, path = "general", ContentType, originalname, expiresIn = 120, }) => {
+const createPreSignedURL = async ({ Bucket = process.env.AWS_BUCKET_NAME, path = "general", ContentType, Originalname, expiresIn = 120, }) => {
     const command = new client_s3_1.PutObjectCommand({
         Bucket,
-        Key: `${process.env.APPLICATION_NAME}/${path}/${(0, uuid_1.v4)()}-preSigned-${originalname}`,
+        Key: `${process.env.APPLICATION_NAME}/${path}/${(0, uuid_1.v4)()}-preSigned-${Originalname}`,
         ContentType,
     });
     const url = await (0, s3_request_presigner_1.getSignedUrl)((0, exports.s3Config)(), command, { expiresIn });
@@ -86,7 +86,9 @@ const createGetPreSignedURL = async ({ Bucket = process.env.AWS_BUCKET_NAME, Key
     const command = new client_s3_1.GetObjectCommand({
         Bucket,
         Key,
-        ResponseContentDisposition: download === "true" ? `attachment;filename=${downloadName}.${path}` : undefined,
+        ResponseContentDisposition: download === "true"
+            ? `attachment;filename=${downloadName}.${path}`
+            : undefined,
     });
     const url = await (0, s3_request_presigner_1.getSignedUrl)((0, exports.s3Config)(), command, { expiresIn });
     if (!url)
@@ -102,3 +104,43 @@ const getFile = async ({ Bucket = process.env.AWS_BUCKET_NAME, Key, }) => {
     return (0, exports.s3Config)().send(command);
 };
 exports.getFile = getFile;
+const deleteFile = async ({ Bucket = process.env.AWS_BUCKET_NAME, Key, }) => {
+    const command = new client_s3_1.DeleteObjectCommand({
+        Bucket,
+        Key,
+    });
+    return (0, exports.s3Config)().send(command);
+};
+exports.deleteFile = deleteFile;
+const deleteFiles = async ({ Bucket = process.env.AWS_BUCKET_NAME, urls, Quiet = false, }) => {
+    const Objects = urls.map((url) => {
+        return { Key: url };
+    });
+    const command = new client_s3_1.DeleteObjectsCommand({
+        Bucket,
+        Delete: {
+            Objects,
+            Quiet,
+        },
+    });
+    return (0, exports.s3Config)().send(command);
+};
+exports.deleteFiles = deleteFiles;
+const listDirectoryFiles = async ({ Bucket = process.env.AWS_BUCKET_NAME, path, }) => {
+    const command = new client_s3_1.ListObjectsV2Command({
+        Bucket,
+        Prefix: `${process.env.APPLICATION_NAME}/${path}`,
+    });
+    return (0, exports.s3Config)().send(command);
+};
+exports.listDirectoryFiles = listDirectoryFiles;
+const deleteFolderByPrefix = async ({ Bucket = process.env.AWS_BUCKET_NAME, path, Quiet = false, }) => {
+    const fileList = await (0, exports.listDirectoryFiles)({ Bucket, path });
+    if (!fileList?.Contents?.length)
+        throw new err_response_1.BadRequestExceptions("Empty directory");
+    const urls = fileList.Contents.map((file) => {
+        return file.Key;
+    });
+    return await (0, exports.deleteFiles)({ urls, Bucket, Quiet });
+};
+exports.deleteFolderByPrefix = deleteFolderByPrefix;

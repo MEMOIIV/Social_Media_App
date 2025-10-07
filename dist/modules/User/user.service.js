@@ -50,10 +50,10 @@ class UserService {
         return (0, successResponse_1.default)({ res, data: newCredentials, statusCode: 201 });
     };
     profileImage = async (req, res) => {
-        const { ContentType, originalname } = req.body;
+        const { ContentType, Originalname } = req.body;
         const { url, Key } = await (0, s3_config_1.createPreSignedURL)({
             ContentType,
-            originalname,
+            Originalname,
             path: `users/${req.decoded?._id}`,
         });
         return (0, successResponse_1.default)({

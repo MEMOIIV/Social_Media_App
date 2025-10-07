@@ -78,7 +78,7 @@ class UserService {
   profileImage = async (req: Request, res: Response): Promise<Response> => {
     // upload small size file
 
-    // const key = await uploadFile({
+    // const Key = await uploadFile({
     //   file: req.file as Express.Multer.File,
     //   path: `users/${req.decoded?._id}`,
     // });
@@ -91,10 +91,10 @@ class UserService {
     // });
 
     // use preSignedURL
-    const { ContentType, originalname }: IPresignedURL = req.body;
+    const { ContentType, Originalname }: IPresignedURL = req.body;
     const { url, Key } = await createPreSignedURL({
       ContentType,
-      originalname,
+      Originalname,
       path: `users/${req.decoded?._id}`,
     });
     

@@ -19,6 +19,7 @@ const node_util_1 = require("node:util");
 const node_stream_1 = require("node:stream");
 const s3_config_1 = require("./utils/multer/s3.config");
 const successResponse_1 = __importDefault(require("./utils/successResponse"));
+const User_model_1 = require("./DB/models/User.model");
 const createS3WriteStreamPipe = (0, node_util_1.promisify)(node_stream_1.pipeline);
 (0, dotenv_1.config)({ path: node_path_1.default.resolve("./config/.env.dev") });
 const limiter = (0, express_rate_limit_1.default)({
@@ -33,9 +34,35 @@ const bootstrap = async () => {
     const app = (0, express_1.default)();
     const port = Number(process.env.PORT) || 5000;
     app.use((0, cors_1.default)(), express_1.default.json(), (0, helmet_1.default)(), limiter);
-    await (0, connection_db_1.default)();
     app.get("/", (req, res) => {
         res.status(200).json({ message: "Welcome to social media app from TS" });
+    });
+    app.use("/api/auth", auth_controller_1.default);
+    app.use("/api/user", user_controller_1.default);
+    app.get("/test-s3", async (req, res) => {
+        const { Key } = req.query;
+        const result = await (0, s3_config_1.deleteFile)({ Key: Key });
+        return (0, successResponse_1.default)({
+            res,
+            message: "Delete file successfully",
+            data: { result },
+        });
+    });
+    app.get("/list-deleted-files", async (req, res) => {
+        await (0, s3_config_1.deleteFolderByPrefix)({ path: `users/` });
+        return (0, successResponse_1.default)({ res });
+    });
+    app.get("/upload/pre-signed/*path", async (req, res) => {
+        const { downloadName, download } = req.query;
+        const { path } = req.params;
+        const Key = path.join("/");
+        const url = await (0, s3_config_1.createGetPreSignedURL)({
+            Key,
+            downloadName: downloadName,
+            download: download,
+            path: path[path.length - 1]?.split(".")[1] || "",
+        });
+        return (0, successResponse_1.default)({ res, data: { url } });
     });
     app.get("/upload/*path", async (req, res) => {
         const { downloadName } = req.query;
@@ -50,24 +77,24 @@ const bootstrap = async () => {
         }
         return createS3WriteStreamPipe(s3Response.Body, res);
     });
-    app.get("/upload-pre-signed/*path", async (req, res) => {
-        const { downloadName, download } = req.query;
-        const { path } = req.params;
-        const Key = path.join("/");
-        const url = await (0, s3_config_1.createGetPreSignedURL)({
-            Key,
-            downloadName: downloadName,
-            download: download,
-            path: path[path.length - 1]?.split(".")[1] || ""
+    try {
+        const user = new User_model_1.UserModel({
+            fullName: "test test",
+            email: `${Date.now()}@gmail.com`,
+            password: "Am12345@#",
         });
-        return (0, successResponse_1.default)({ res, data: { url } });
-    });
-    app.use("/api/auth", auth_controller_1.default);
-    app.use("/api/user", user_controller_1.default);
+        await user.save();
+        user.lastName = "ali";
+        await user.save();
+    }
+    catch (error) {
+        console.log(error);
+    }
+    app.use(err_response_1.globalErrorHandler);
+    await (0, connection_db_1.default)();
     app.listen(port, () => {
         console.log(chalk_1.default.bgGreen(`Server is running on port ${port} `));
     });
-    app.use(err_response_1.globalErrorHandler);
     app.all("/*dummy", (req, res, next) => { });
 };
 exports.bootstrap = bootstrap;

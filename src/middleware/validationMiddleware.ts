@@ -4,6 +4,7 @@ import { BadRequestExceptions } from "../utils/response/err.response";
 
 type ReqTypeKey = keyof Request;
 type SchemaType = Partial<Record<ReqTypeKey, ZodType>>;
+
 export const validation = (schema: SchemaType) => {
   return (req: Request, res: Response, next: NextFunction): NextFunction => {
     const validationErrors: Array<{

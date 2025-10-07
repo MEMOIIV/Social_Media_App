@@ -18,6 +18,7 @@ const chalk_1 = __importDefault(require("chalk"));
 const node_util_1 = require("node:util");
 const node_stream_1 = require("node:stream");
 const s3_config_1 = require("./utils/multer/s3.config");
+const successResponse_1 = __importDefault(require("./utils/successResponse"));
 const createS3WriteStreamPipe = (0, node_util_1.promisify)(node_stream_1.pipeline);
 (0, dotenv_1.config)({ path: node_path_1.default.resolve("./config/.env.dev") });
 const limiter = (0, express_rate_limit_1.default)({
@@ -48,6 +49,18 @@ const bootstrap = async () => {
             res.setHeader("Content-Disposition", `attachment; filename="${downloadName}.${path[path.length - 1]?.split(".")[1]}"`);
         }
         return createS3WriteStreamPipe(s3Response.Body, res);
+    });
+    app.get("/upload-pre-signed/*path", async (req, res) => {
+        const { downloadName, download } = req.query;
+        const { path } = req.params;
+        const Key = path.join("/");
+        const url = await (0, s3_config_1.createGetPreSignedURL)({
+            Key,
+            downloadName: downloadName,
+            download: download,
+            path: path[path.length - 1]?.split(".")[1] || ""
+        });
+        return (0, successResponse_1.default)({ res, data: { url } });
     });
     app.use("/api/auth", auth_controller_1.default);
     app.use("/api/user", user_controller_1.default);

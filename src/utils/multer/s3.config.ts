@@ -2,7 +2,6 @@ import {
   S3Client,
   PutObjectCommand,
   ObjectCannedACL,
-  GetObjectAclCommand,
   GetObjectCommand,
 } from "@aws-sdk/client-s3"; // upload file
 import { StorageEnum } from "./cloud.multer";
@@ -151,6 +150,37 @@ export const createPreSignedURL = async ({
     throw new BadRequestExceptions("fail to generate presignedURL");
 
   return { url, Key: command.input.Key };
+};
+
+// Get Asset With PreSignedURL
+export const createGetPreSignedURL = async ({
+  Bucket = process.env.AWS_BUCKET_NAME as string,
+  Key,
+  downloadName = "dummy",
+  download = "false",
+  path,
+  expiresIn = 120,
+}: {
+  Bucket?: string;
+  Key: string;
+  downloadName?: string;
+  download?: string;
+  path?:string;
+  expiresIn?: number;
+}) => {
+
+  const command = new GetObjectCommand({
+    Bucket,
+    Key,
+    ResponseContentDisposition:
+      download === "true" ? `attachment;filename=${downloadName}.${path}` : undefined,
+  });
+
+  const url = await getSignedUrl(s3Config(), command, { expiresIn });
+
+  if (!url) throw new BadRequestExceptions("Fail to generate presignedURL");
+
+  return url;
 };
 
 // Get asset

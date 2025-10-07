@@ -15,7 +15,8 @@ import helmet from "helmet";
 import chalk from "chalk";
 import { promisify } from "node:util";
 import { pipeline } from "node:stream";
-import { getFile } from "./utils/multer/s3.config";
+import { createGetPreSignedURL, getFile } from "./utils/multer/s3.config";
+import successResponse from "./utils/successResponse";
 
 const createS3WriteStreamPipe = promisify(pipeline);
 
@@ -45,7 +46,7 @@ export const bootstrap = async (): Promise<void> => {
 
   // get asset
   app.get("/upload/*path", async (req: Request, res: Response) => {
-    const { downloadName } = req.query;
+    const { downloadName } = req.query as { downloadName?: string };
     const { path } = req.params as unknown as { path: string[] };
     const Key = path.join("/");
     const s3Response = await getFile({ Key });
@@ -54,11 +55,13 @@ export const bootstrap = async (): Promise<void> => {
       "Content-Type",
       `${s3Response.ContentType}` || "application/octet-stream"
     );
-    
+
     if (downloadName) {
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${downloadName}.${path[path.length -1]?.split(".")[1]}"`
+        `attachment; filename="${downloadName}.${
+          path[path.length - 1]?.split(".")[1]
+        }"`
       );
     }
 
@@ -66,6 +69,26 @@ export const bootstrap = async (): Promise<void> => {
       s3Response.Body as NodeJS.ReadableStream,
       res
     );
+  });
+
+  // get asset with preSignedURL
+  app.get("/upload-pre-signed/*path", async (req: Request, res: Response) => {
+    const { downloadName, download } = req.query as {
+      downloadName?: string;
+      download?: string;
+    };
+
+    const { path } = req.params as unknown as { path: string[] };
+
+    const Key = path.join("/");
+
+    const url = await createGetPreSignedURL({
+      Key,
+      downloadName : downloadName as string,
+      download : download as string,
+      path: path[path.length - 1]?.split(".")[1] || ""
+    })
+    return successResponse({res , data:{url}})
   });
 
   app.use("/api/auth", authRouter);

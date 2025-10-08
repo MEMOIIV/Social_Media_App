@@ -18,18 +18,17 @@ import { pipeline } from "node:stream";
 import {
   createGetPreSignedURL,
   deleteFile,
-  deleteFiles,
   deleteFolderByPrefix,
   getFile,
-  listDirectoryFiles,
 } from "./utils/multer/s3.config";
 import successResponse from "./utils/successResponse";
-import { UserModel } from "./DB/models/User.model";
 
 const createS3WriteStreamPipe = promisify(pipeline);
 
+// 1. Load environment variables
 config({ path: path.resolve("./config/.env.dev") });
 
+// 2. Setup rate limiter
 const limiter: RateLimitRequestHandler = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
   limit: 100, // 100 request in 15 min
@@ -40,25 +39,28 @@ const limiter: RateLimitRequestHandler = rateLimit({
 });
 
 export const bootstrap = async (): Promise<void> => {
+  // 3. Connect to database
+  await connectDB();
+
+  // 4. Initialize express app and global middlewares
   const app: Express = express();
   const port: number = Number(process.env.PORT as string) || 5000;
   app.use(cors(), express.json(), helmet(), limiter); // Global Middleware
 
-  // App-Router
+  // 5. Health check route
   app.get("/", (req: Request, res: Response) => {
     res.status(200).json({ message: "Welcome to social media app from TS" });
   });
 
-  // sup-app-routing-modules
+  // 6. Register routers
   app.use("/api/auth", authRouter);
   app.use("/api/user", userRouter);
 
+  // 7. S3 service routes
   // Delete File
   app.get("/test-s3", async (req: Request, res: Response) => {
     const { Key } = req.query as { Key: string };
-
     const result = await deleteFile({ Key: Key as string });
-
     return successResponse({
       res,
       message: "Delete file successfully",
@@ -136,31 +138,16 @@ export const bootstrap = async (): Promise<void> => {
     );
   });
 
-  // test pre middleware is work \
-  try {
-    const user = new UserModel({
-      fullName: "test test",
-      email: `${Date.now()}@gmail.com`,
-      password: "Am12345@#",
-    });
-    await user.save();
-    user.lastName = "ali";
-    await user .save();
-  } catch (error) {
-    console.log(error);
-  }
+  // 8. Catch-all route for undefined endpoints
+  app.all("/*dummy", (req: Request, res: Response) => {
+    res.status(404).json({ message: `Route not found: ${req.originalUrl}` });
+  });
 
-  // Global Error Handler Middleware
+  // 9. Global error handler (must be last middleware)
   app.use(globalErrorHandler);
 
-  // DB
-  await connectDB();
-
-  // start-server
+  // 10. Start server
   app.listen(port, (): void => {
     console.log(chalk.bgGreen(`Server is running on port ${port} `));
   });
-
-  //
-  app.all("/*dummy", (req, res, next) => {});
 };

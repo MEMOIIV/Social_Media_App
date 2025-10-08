@@ -118,8 +118,8 @@ class AuthenticationService {
         {
           fullName,
           email,
-          password: await generateHash(password),
-          confirmEmailOTP: await generateHash(String(otp)),
+          password,
+          confirmEmailOTP: `${otp}`,
         },
       ],
       options: { validateBeforeSave: true },

@@ -43,7 +43,17 @@ export const generalField = {
     .min(2, { error: "min length must be 2" })
     .max(20, { error: "max length must be 20" }),
   email: z.email({ error: "invalid email" }),
-  password: z.string(),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters long")
+    .max(12, "Password must be a maximum of 12 characters long")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/\d/, "Password must contain at least one digit")
+    .regex(
+      /[^A-Za-z0-9]/,
+      "Password must contain at least one special character"
+    ),
   confirmPassword: z.string(),
   otp: z.string().regex(/^\d{6}/),
 };

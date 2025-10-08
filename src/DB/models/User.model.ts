@@ -1,8 +1,9 @@
-import mongoose, { HydratedDocument } from "mongoose";
-import { required } from "zod/v4/core/util.cjs";
+import mongoose, { type HydratedDocument, type UpdateQuery } from "mongoose";
 import { BadRequestExceptions } from "../../utils/response/err.response";
 import { generateHash } from "../../utils/security/hash.utils";
 import { emailEvent } from "../../utils/events/email.event";
+import { TokenRepository } from "../repositories/token.db.repository";
+import { TokenModel } from "./token.model";
 
 export enum GenderEnum {
   male = "male",
@@ -47,6 +48,13 @@ export interface IUser {
   createdAt: Date;
   updatedAt?: Date;
   __v?: number;
+
+  freezedAt?: Date;
+  freezedBy?: mongoose.Types.ObjectId;
+  deletedAt?: Date;
+  deletedBy?: mongoose.Types.ObjectId;
+  restoreAt?: Date;
+  restoreBy?: mongoose.Types.ObjectId;
 }
 
 const userSchema = new mongoose.Schema<IUser>(
@@ -103,6 +111,12 @@ const userSchema = new mongoose.Schema<IUser>(
     address: String,
     profileImage: String,
     coverImages: [String],
+    freezedAt: Date,
+    freezedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    deletedAt: Date,
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    restoreAt: Date,
+    restoreBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   // options
   {
@@ -124,33 +138,39 @@ userSchema
     return ` ${this.firstName} ${this.lastName}`;
   });
 
-// middleware
-userSchema.pre("validate", function (next) {
-  if (!this.slug?.includes("-")) {
-    throw new BadRequestExceptions(
-      "Slug is required and must hold - like example : first-name-last-name"
-    );
+// apply Hooks on SignUp \
+userSchema.pre(
+  "save",
+  async function (
+    this: HUserModel & { wasNew: boolean; confirmEmailPlanOTP?: string },
+    next
+  ) {
+    this.wasNew = this.isNew;
+    if (this.isModified("password")) {
+      this.password = await generateHash(this.password);
+    }
+    if (this.isModified("confirmEmailOTP")) {
+      this.confirmEmailPlanOTP = this.confirmEmailOTP as string;
+      this.confirmEmailOTP = await generateHash(this.confirmEmailOTP as string);
+    }
   }
-  next();
+);
+
+userSchema.post("save", async function (doc, next) {
+  const that = this as HUserModel & {
+    wasNew: boolean;
+    confirmEmailPlanOTP?: string;
+  };
+  if (that.wasNew && that.confirmEmailPlanOTP) {
+    emailEvent.emit("confirmEmail", {
+      to: this.email,
+      fullName: this.fullName,
+      otp: that.confirmEmailPlanOTP,
+    });
+  }
 });
 
-userSchema.pre("save", async function (this: HUserModel & {wasNew : boolean} , next) {
-  this.wasNew = this.isNew
-  console.log("Pre Hook" , this.wasNew);
-  if (this.isModified("password")) {
-    this.password = await generateHash(this.password);
-  }
-});
-
-userSchema.post("save", function (doc , next) {
-  const that =this as HUserModel & {wasNew : boolean}
-  console.log(that.wasNew);
-  if(that.wasNew){
-    emailEvent.emit("confirmEmail", {to:this.email , otp :123456})
-  }
-});
-
-// compiling Model
+// compiling Models
 export const UserModel =
   mongoose.models.User || mongoose.model<IUser>("User", userSchema);
 export type HUserModel = HydratedDocument<IUser>;

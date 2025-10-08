@@ -88,8 +88,8 @@ class AuthenticationService {
                 {
                     fullName,
                     email,
-                    password: await (0, hash_utils_1.generateHash)(password),
-                    confirmEmailOTP: await (0, hash_utils_1.generateHash)(String(otp)),
+                    password,
+                    confirmEmailOTP: `${otp}`,
                 },
             ],
             options: { validateBeforeSave: true },

@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserModel = exports.LogoutEnum = exports.ProviderEnum = exports.RoleEnum = exports.GenderEnum = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
-const err_response_1 = require("../../utils/response/err.response");
 const hash_utils_1 = require("../../utils/security/hash.utils");
 const email_event_1 = require("../../utils/events/email.event");
 var GenderEnum;
@@ -80,6 +79,12 @@ const userSchema = new mongoose_1.default.Schema({
     address: String,
     profileImage: String,
     coverImages: [String],
+    freezedAt: Date,
+    freezedBy: { type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" },
+    deletedAt: Date,
+    deletedBy: { type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" },
+    restoreAt: Date,
+    restoreBy: { type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" },
 }, {
     timestamps: true,
     toJSON: { virtuals: true },
@@ -95,24 +100,24 @@ userSchema
     .get(function () {
     return ` ${this.firstName} ${this.lastName}`;
 });
-userSchema.pre("validate", function (next) {
-    if (!this.slug?.includes("-")) {
-        throw new err_response_1.BadRequestExceptions("Slug is required and must hold - like example : first-name-last-name");
-    }
-    next();
-});
 userSchema.pre("save", async function (next) {
     this.wasNew = this.isNew;
-    console.log("Pre Hook", this.wasNew);
     if (this.isModified("password")) {
         this.password = await (0, hash_utils_1.generateHash)(this.password);
     }
+    if (this.isModified("confirmEmailOTP")) {
+        this.confirmEmailPlanOTP = this.confirmEmailOTP;
+        this.confirmEmailOTP = await (0, hash_utils_1.generateHash)(this.confirmEmailOTP);
+    }
 });
-userSchema.post("save", function (doc, next) {
+userSchema.post("save", async function (doc, next) {
     const that = this;
-    console.log(that.wasNew);
-    if (that.wasNew) {
-        email_event_1.emailEvent.emit("confirmEmail", { to: this.email, otp: 123456 });
+    if (that.wasNew && that.confirmEmailPlanOTP) {
+        email_event_1.emailEvent.emit("confirmEmail", {
+            to: this.email,
+            fullName: this.fullName,
+            otp: that.confirmEmailPlanOTP,
+        });
     }
 });
 exports.UserModel = mongoose_1.default.models.User || mongoose_1.default.model("User", userSchema);

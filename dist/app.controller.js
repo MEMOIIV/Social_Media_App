@@ -10,6 +10,7 @@ const err_response_1 = require("./utils/response/err.response");
 const connection_db_1 = __importDefault(require("./DB/connection.db"));
 const auth_controller_1 = __importDefault(require("./modules/Auth/auth.controller"));
 const user_controller_1 = __importDefault(require("./modules/User/user.controller"));
+const post_controller_1 = __importDefault(require("./modules/Post/post.controller"));
 const dotenv_1 = require("dotenv");
 const node_path_1 = __importDefault(require("node:path"));
 const cors_1 = __importDefault(require("cors"));
@@ -39,6 +40,7 @@ const bootstrap = async () => {
     });
     app.use("/api/auth", auth_controller_1.default);
     app.use("/api/user", user_controller_1.default);
+    app.use("/api/post", post_controller_1.default);
     app.get("/test-s3", async (req, res) => {
         const { Key } = req.query;
         const result = await (0, s3_config_1.deleteFile)({ Key: Key });

@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import successResponse from "../../utils/successResponse";
 import { ILogoutDTO, IPresignedURL } from "./user.dto";
 import {
-  HUserModel,
+  HUserModelDocument,
   IUser,
   LogoutEnum,
   UserModel,
@@ -16,9 +16,7 @@ import {
 import { JwtPayload } from "jsonwebtoken";
 import {
   createPreSignedURL,
-  uploadFile,
   uploadFiles,
-  uploadLargeFile,
 } from "../../utils/multer/s3.config";
 import { StorageEnum } from "../../utils/multer/cloud.multer";
 
@@ -69,7 +67,7 @@ class UserService {
 
   // Refresh Token
   refreshToken = async (req: Request, res: Response): Promise<Response> => {
-    const newCredentials = await createLoginCredentials(req.user as HUserModel);
+    const newCredentials = await createLoginCredentials(req.user as HUserModelDocument);
     await revokeToken(req.decoded as JwtPayload);
     return successResponse({ res, data: newCredentials, statusCode: 201 });
   };

@@ -142,7 +142,7 @@ userSchema
 userSchema.pre(
   "save",
   async function (
-    this: HUserModel & { wasNew: boolean; confirmEmailPlanOTP?: string },
+    this: HUserModelDocument & { wasNew: boolean; confirmEmailPlanOTP?: string },
     next
   ) {
     this.wasNew = this.isNew;
@@ -157,7 +157,7 @@ userSchema.pre(
 );
 
 userSchema.post("save", async function (doc, next) {
-  const that = this as HUserModel & {
+  const that = this as HUserModelDocument & {
     wasNew: boolean;
     confirmEmailPlanOTP?: string;
   };
@@ -173,4 +173,4 @@ userSchema.post("save", async function (doc, next) {
 // compiling Models
 export const UserModel =
   mongoose.models.User || mongoose.model<IUser>("User", userSchema);
-export type HUserModel = HydratedDocument<IUser>;
+export type HUserModelDocument = HydratedDocument<IUser>;

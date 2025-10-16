@@ -50,9 +50,9 @@ const postSchema = new mongoose_1.default.Schema({
         ref: "User",
     },
     freezedAt: Date,
-    freezedBy: { type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" },
+    freezedBy: [{ type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" }],
     restoredAt: Date,
-    restoredBy: { type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" },
+    restoredBy: [{ type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" }],
 }, {
     timestamps: true,
 });

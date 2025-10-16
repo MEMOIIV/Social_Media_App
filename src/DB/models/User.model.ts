@@ -55,6 +55,7 @@ export interface IUser {
   deletedBy?: mongoose.Types.ObjectId;
   restoreAt?: Date;
   restoreBy?: mongoose.Types.ObjectId;
+  friends?: mongoose.Types.ObjectId[];
 }
 
 const userSchema = new mongoose.Schema<IUser>(
@@ -117,6 +118,7 @@ const userSchema = new mongoose.Schema<IUser>(
     deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     restoreAt: Date,
     restoreBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   },
   // options
   {
@@ -142,7 +144,10 @@ userSchema
 userSchema.pre(
   "save",
   async function (
-    this: HUserModelDocument & { wasNew: boolean; confirmEmailPlanOTP?: string },
+    this: HUserModelDocument & {
+      wasNew: boolean;
+      confirmEmailPlanOTP?: string;
+    },
     next
   ) {
     this.wasNew = this.isNew;
@@ -167,6 +172,16 @@ userSchema.post("save", async function (doc, next) {
       fullName: this.fullName,
       otp: that.confirmEmailPlanOTP,
     });
+  }
+});
+
+// Filter out freezed users by default
+userSchema.pre(["find", "findOne"], async function () {
+  const query = this.getQuery();
+  if (query.paranoId === false) {
+    this.setQuery({ ...query });
+  } else {
+    this.setQuery({ ...query, freezedAt: { $exists: false } });
   }
 });
 

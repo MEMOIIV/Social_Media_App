@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import z, { ZodError, ZodType } from "zod";
 import { BadRequestExceptions } from "../utils/response/err.response";
+import { Types } from "mongoose";
 
 type ReqTypeKey = keyof Request;
 type SchemaType = Partial<Record<ReqTypeKey, ZodType>>;
@@ -16,6 +17,16 @@ export const validation = (schema: SchemaType) => {
     }> = [];
     for (const kye of Object.keys(schema) as ReqTypeKey[]) {
       if (!schema[kye]) continue;
+
+      // in case i used form data to send data i need to handle the request to apply validation on file
+      // this way add the attachment in row body
+      if (req.file) {
+        req.body.attachments = req.file;
+      }
+      
+      if (req.files) {
+        req.body.attachments = req.files;
+      }
 
       const validationResult = schema[kye].safeParse(req[kye]);
       if (!validationResult.success) {
@@ -56,4 +67,34 @@ export const generalField = {
     ),
   confirmPassword: z.string(),
   otp: z.string().regex(/^\d{6}/),
+  file: function (mimetypes: string[]) {
+    return z
+      .strictObject({
+        fieldname: z.string(),
+        originalname: z.string(),
+        encoding: z.string(),
+        mimetype: z.string(),
+        // buffer well be includes in case i used memory storage and in case i used dis storage the path well pe includes
+        buffer: z.any().optional(), //instanceof(Buffer),
+        path: z.string().optional(),
+        size: z.number(),
+      })
+      .refine(
+        (data) => {
+          return data.buffer || data.path;
+        },
+        { message: "Please provide a file " }
+      )
+      .refine(
+        (file) => {
+          return mimetypes.includes(file.mimetype);
+        },
+        { message: `Invalid file type. Allowed types: ${mimetypes.join(", ")}` }
+      );
+  },
+  id: z
+    .string()
+    .refine((data) => Types.ObjectId.isValid(data), {
+      message: "In-valid tag id",
+    }),
 };

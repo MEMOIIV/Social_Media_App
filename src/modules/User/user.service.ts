@@ -14,10 +14,7 @@ import {
   revokeToken,
 } from "../../utils/security/token.utils";
 import { JwtPayload } from "jsonwebtoken";
-import {
-  createPreSignedURL,
-  uploadFiles,
-} from "../../utils/multer/s3.config";
+import { createPreSignedURL, uploadFiles } from "../../utils/multer/s3.config";
 import { StorageEnum } from "../../utils/multer/cloud.multer";
 
 class UserService {
@@ -67,7 +64,9 @@ class UserService {
 
   // Refresh Token
   refreshToken = async (req: Request, res: Response): Promise<Response> => {
-    const newCredentials = await createLoginCredentials(req.user as HUserModelDocument);
+    const newCredentials = await createLoginCredentials(
+      req.user as HUserModelDocument
+    );
     await revokeToken(req.decoded as JwtPayload);
     return successResponse({ res, data: newCredentials, statusCode: 201 });
   };
@@ -89,25 +88,25 @@ class UserService {
     // });
 
     // use preSignedURL
+   
     const { ContentType, Originalname }: IPresignedURL = req.body;
     const { url, Key } = await createPreSignedURL({
       ContentType,
       Originalname,
       path: `users/${req.decoded?._id}`,
     });
-    
-    // update user
 
-    // const user = await this._userModel.updateOne({
-    //   filter: { _id: req.decoded?._id },
-    //   update: { profileImage: key },
-    // });
+    // update user
+    const user = await this._userModel.updateOne({
+      filter: { _id: req.decoded?._id },
+      update: { profileImage: Key },
+    });
 
     return successResponse({
       res,
       statusCode: 201,
       message: "Profile image upload successfully",
-      data: { url, Key },
+      data: { url, Key, user },
     });
   };
 
@@ -121,11 +120,15 @@ class UserService {
       files: req.files as Express.Multer.File[],
       path: `users/${req.decoded?._id}/cover`,
     });
+    const user = await this._userModel.updateOne({
+      filter: { _id: req.decoded?._id },
+      update: { coverImages: urls },
+    });
     return successResponse({
       res,
       statusCode: 201,
       message: "Profile image upload successfully",
-      data: { urls },
+      data: { urls , user },
     });
   };
 }

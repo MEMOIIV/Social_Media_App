@@ -6,12 +6,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.generalField = exports.validation = void 0;
 const zod_1 = __importDefault(require("zod"));
 const err_response_1 = require("../utils/response/err.response");
+const mongoose_1 = require("mongoose");
 const validation = (schema) => {
     return (req, res, next) => {
         const validationErrors = [];
         for (const kye of Object.keys(schema)) {
             if (!schema[kye])
                 continue;
+            if (req.file) {
+                req.body.attachments = req.file;
+            }
+            if (req.files) {
+                req.body.attachments = req.files;
+            }
             const validationResult = schema[kye].safeParse(req[kye]);
             if (!validationResult.success) {
                 const errors = validationResult.error;
@@ -47,4 +54,27 @@ exports.generalField = {
         .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
     confirmPassword: zod_1.default.string(),
     otp: zod_1.default.string().regex(/^\d{6}/),
+    file: function (mimetypes) {
+        return zod_1.default
+            .strictObject({
+            fieldname: zod_1.default.string(),
+            originalname: zod_1.default.string(),
+            encoding: zod_1.default.string(),
+            mimetype: zod_1.default.string(),
+            buffer: zod_1.default.any().optional(),
+            path: zod_1.default.string().optional(),
+            size: zod_1.default.number(),
+        })
+            .refine((data) => {
+            return data.buffer || data.path;
+        }, { message: "Please provide a file " })
+            .refine((file) => {
+            return mimetypes.includes(file.mimetype);
+        }, { message: `Invalid file type. Allowed types: ${mimetypes.join(", ")}` });
+    },
+    id: zod_1.default
+        .string()
+        .refine((data) => mongoose_1.Types.ObjectId.isValid(data), {
+        message: "In-valid tag id",
+    }),
 };

@@ -36,8 +36,72 @@ export abstract class DataBaseRepository<TDocument> {
     return (await this.model.insertMany(data)) as HydratedDocument<TDocument>[];
   }
 
-  // findOne
+  // Find
+  async find({
+    // if not find this function return: []
+    filter,
+    select,
+    options,
+  }: {
+    filter?: RootFilterQuery<TDocument>;
+    select?: ProjectionType<TDocument> | undefined;
+    options?: QueryOptions<TDocument> | undefined;
+  }): Promise<any | HydratedDocument<TDocument>[] | []> {
+    const doc = this.model.find(filter || {}).select(select || "");
+    if (options?.populate) {
+      doc.populate(options.populate as PopulateOptions[]);
+    }
+    if (options?.lean) {
+      doc.lean(options.lean);
+    }
+    if (options?.limit) {
+      doc.limit(options.limit);
+    }
+    if (options?.skip) {
+      doc.skip(options.skip);
+    }
+    return await doc.exec();
+  }
+
+  // pagination
+  async paginate({
+    filter = {},
+    select = {},
+    options = {},
+    page = 1,
+    limit = 5,
+  }: {
+    filter?: RootFilterQuery<TDocument>;
+    select?: ProjectionType<TDocument> | undefined;
+    options?: QueryOptions<TDocument> | undefined;
+    page?: number;
+    limit?: number;
+  }) {
+    let docsCount: number | undefined = undefined;
+    let pages: number | undefined = undefined;
+    page = Math.floor(page < 1 ? 1 : page);
+    options.limit = Math.floor(limit < 1 || !limit ? 5 : limit);
+    options.skip = (page - 1) * limit;
+    docsCount = await this.model.countDocuments({
+      ...filter,
+      freezedAt: { $exists: false },
+    });
+    pages = Math.ceil(docsCount / options.limit);
+
+    const result = await this.find({ filter, select, options });
+
+    return {
+      docsCount,
+      pages,
+      limit: options.limit,
+      currentPage: page,
+      result,
+    };
+  }
+
+  // Find One
   async findOne({
+    // return:  doc || null
     filter,
     select,
     options,
@@ -46,7 +110,7 @@ export abstract class DataBaseRepository<TDocument> {
     select?: ProjectionType<TDocument> | null;
     options?: QueryOptions<TDocument> | null;
   }): Promise<any | HydratedDocument<TDocument> | null> {
-    const doc = this.model.findOne(filter).select(select || "");
+    const doc = this.model.findOne(filter , select , options);
     if (options?.populate) {
       doc.populate(options.populate as PopulateOptions[]);
     }
@@ -76,7 +140,7 @@ export abstract class DataBaseRepository<TDocument> {
     return await doc.exec();
   }
 
-  // updateOne
+  // Update One
   async updateOne({
     filter,
     update,
@@ -86,6 +150,12 @@ export abstract class DataBaseRepository<TDocument> {
     update: UpdateQuery<TDocument>;
     options?: MongooseUpdateQueryOptions<TDocument> | null;
   }): Promise<UpdateWriteOpResult> {
+    if (Array.isArray(update)) {
+      update.push({
+        $set: { __v: { $add: ["$__v", 1] } },
+      });
+      return await this.model.updateOne(filter, update, options);
+    }
     return await this.model.updateOne(
       filter,
       { ...update, $inc: { __v: 1 } },
@@ -93,12 +163,12 @@ export abstract class DataBaseRepository<TDocument> {
     );
   }
 
-  // find One and update
+  // Find One and update
   async findOneAndUpdate({
     filter,
     update,
     select,
-    options,
+    options = { new: true, runValidators: true },
   }: {
     filter: RootFilterQuery<TDocument>;
     update: UpdateQuery<TDocument>;
@@ -106,7 +176,7 @@ export abstract class DataBaseRepository<TDocument> {
     options?: QueryOptions<TDocument> | null;
   }): Promise<any | HydratedDocument<TDocument> | null> {
     const doc = this.model
-      .findOneAndUpdate(filter, update)
+      .findOneAndUpdate(filter, { ...update, $inc: { __v: 1 } }, options)
       .select(select || "");
     if (options?.populate) {
       doc.populate(options.populate as PopulateOptions[]);
@@ -117,19 +187,21 @@ export abstract class DataBaseRepository<TDocument> {
     return await doc.exec();
   }
 
-  // find By Id and update
+  // Find By Id and update
   async findByIdAndUpdate({
     id,
     update,
     select,
-    options,
+    options = { new: true, runValidators: true },
   }: {
     id: Types.ObjectId;
     update: UpdateQuery<TDocument>;
     select?: ProjectionType<TDocument> | null;
     options?: QueryOptions<TDocument> | null;
   }): Promise<any | HydratedDocument<TDocument> | null> {
-    const doc = this.model.findOneAndUpdate(id, update).select(select || "");
+    const doc = this.model
+      .findOneAndUpdate(id, { ...update, $inc: { __v: 1 } }, options)
+      .select(select || "");
     if (options?.populate) {
       doc.populate(options.populate as PopulateOptions[]);
     }
@@ -139,7 +211,7 @@ export abstract class DataBaseRepository<TDocument> {
     return await doc.exec();
   }
 
-  // deleteOne
+  // Delete One
   async deleteOne({
     filter,
   }: {
@@ -148,7 +220,7 @@ export abstract class DataBaseRepository<TDocument> {
     return await this.model.deleteOne(filter);
   }
 
-  // deleteMany
+  // Delete Many
   async deleteMany({
     filter,
   }: {
@@ -157,7 +229,7 @@ export abstract class DataBaseRepository<TDocument> {
     return await this.model.deleteMany(filter);
   }
 
-  // deleteMany
+  // Find One And Delete
   async findOneAndDelete({
     filter,
   }: {

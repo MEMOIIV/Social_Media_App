@@ -47,7 +47,7 @@ router.patch(
     storageApproach: StorageEnum.disk,
     validation: [...fileValidation.images],
     maxsize: 3,
-  }).array("attachment" , 5),
+  }).array("attachments" , 5),
   userService.profileCoverImage
 );
 export default router;

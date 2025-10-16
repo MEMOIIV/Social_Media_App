@@ -1,33 +1,15 @@
 import mongoose, { type HydratedDocument } from "mongoose";
 
-export enum AllowCommentsEnum {
-  Allow = "Allow",
-  Deny = "Deny",
-}
-
-export enum AvailabilityEnum {
-  Private = "Private",
-  Public = "Public",
-  Friends = "Friends",
-}
-
-export enum ActionEnum {
-  like = "like",
-  unLike = "unlike",
-}
-
-export interface IPost {
+export interface IComment {
   content?: string;
   attachments?: string[];
-  assetPostFolderId?: string;
-
-  allowComments?: AllowCommentsEnum;
-  availability?: AvailabilityEnum;
 
   tags?: mongoose.Types.ObjectId[];
   likes?: mongoose.Types.ObjectId[];
 
-  postCreatedBy: mongoose.Types.ObjectId;
+  commentCreatedBy: mongoose.Types.ObjectId;
+  postId: mongoose.Types.ObjectId;
+  commentId?: mongoose.Types.ObjectId;
 
   freezedAt?: Date;
   freezedBy?: mongoose.Types.ObjectId;
@@ -39,9 +21,9 @@ export interface IPost {
   updatedAt?: Date;
 }
 
-export type HPostModelDocument = HydratedDocument<IPost>;
+export type HCommentModelDocument = HydratedDocument<IComment>;
 
-const postSchema = new mongoose.Schema<IPost>(
+const commentSchema = new mongoose.Schema<IComment>(
   // field
   {
     content: {
@@ -53,22 +35,20 @@ const postSchema = new mongoose.Schema<IPost>(
       },
     },
     attachments: [String],
-    assetPostFolderId: String,
-    allowComments: {
-      type: String,
-      enum: Object.values(AllowCommentsEnum),
-      default: AllowCommentsEnum.Allow,
-    },
-    availability: {
-      type: String,
-      enum: Object.values(AvailabilityEnum),
-      default: AvailabilityEnum.Public,
-    },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     tags: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    postCreatedBy: {
+    commentCreatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
+      ref: "User",
+    },
+    postId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "Post",
+    },
+    commentId: {
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
     freezedAt: Date,
@@ -83,7 +63,7 @@ const postSchema = new mongoose.Schema<IPost>(
 );
 
 // Filter out freezed users by default
-postSchema.pre(["find" , "findOne", "findOneAndUpdate" , "updateOne"] , async function(){
+commentSchema.pre(["find" , "findOne", "findOneAndUpdate" , "updateOne"] , async function(){
    const query = this.getQuery();
   if (query.paranoId === false) {
     this.setQuery({ ...query });
@@ -92,5 +72,5 @@ postSchema.pre(["find" , "findOne", "findOneAndUpdate" , "updateOne"] , async fu
   }
 })
 
-export const PostModel =
-  mongoose.models.Post || mongoose.model<IPost>("Post", postSchema);
+export const CommentModel =
+  mongoose.models.Comment || mongoose.model<IComment>("Comment", commentSchema);

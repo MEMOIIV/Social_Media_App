@@ -1,5 +1,5 @@
 import { JwtPayload, Secret, sign, SignOptions, verify } from "jsonwebtoken";
-import { HUserModel, RoleEnum, UserModel } from "../../DB/models/User.model";
+import { HUserModelDocument, RoleEnum, UserModel } from "../../DB/models/User.model";
 import {
   BadRequestExceptions,
   NotFoundExceptions,
@@ -80,7 +80,7 @@ export const getSignature = async (
 };
 
 // 1
-export const createLoginCredentials = async (user: HUserModel) => {
+export const createLoginCredentials = async (user: HUserModelDocument) => {
   const jwtid = uuidv4();
   // 5
   const signatureLevel = await getSignatureLevel(user.role);
@@ -91,7 +91,7 @@ export const createLoginCredentials = async (user: HUserModel) => {
   const accessToken = await generateToken({
     payload: { _id: user._id, email: user.email, name: user.firstName },
     secretKey: signature.access_signature,
-    options: { expiresIn: Number(process.env.ACCESS_EXPIRES_IN) ,jwtid },
+    options: { expiresIn: Number(process.env.ACCESS_EXPIRES_IN), jwtid },
   });
 
   const refreshToken = await generateToken({

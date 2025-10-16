@@ -37,17 +37,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const post_service_1 = __importDefault(require("./post.service"));
-const authentication_middleware_1 = require("../../middleware/authentication.middleware");
-const post_authorization_1 = require("./post.authorization");
-const cloud_multer_1 = require("../../utils/multer/cloud.multer");
-const validator = __importStar(require("./post.validation"));
+const comment_service_1 = __importDefault(require("./comment.service"));
 const validationMiddleware_1 = require("../../middleware/validationMiddleware");
-const comment_controller_1 = __importDefault(require("../comment/comment.controller"));
-const router = (0, express_1.Router)();
-router.use("/:postId/comment", comment_controller_1.default);
-router.post("/create-post", (0, authentication_middleware_1.authentication)(post_authorization_1.endPoint.createPost), (0, cloud_multer_1.cloudFileUpload)({ validation: cloud_multer_1.fileValidation.images }).array("attachments", 3), (0, validationMiddleware_1.validation)(validator.cratePostSchema), post_service_1.default.createPost);
-router.patch("/:postId/like", (0, authentication_middleware_1.authentication)(post_authorization_1.endPoint.likeAndUnlikePost), (0, validationMiddleware_1.validation)(validator.likeAndUnlikePostSchema), post_service_1.default.likeAndUnlikePost);
-router.patch("/update/:postId", (0, authentication_middleware_1.authentication)(post_authorization_1.endPoint.updatePost), (0, cloud_multer_1.cloudFileUpload)({ validation: cloud_multer_1.fileValidation.images }).array("attachments", 3), (0, validationMiddleware_1.validation)(validator.updatePostSchema), post_service_1.default.updatePost);
-router.get("/", (0, authentication_middleware_1.authentication)(post_authorization_1.endPoint.getPosts), (0, validationMiddleware_1.validation)(validator.getPostsSchema), post_service_1.default.getPosts);
+const authentication_middleware_1 = require("../../middleware/authentication.middleware");
+const comment_authorization_1 = require("./comment.authorization");
+const cloud_multer_1 = require("../../utils/multer/cloud.multer");
+const validator = __importStar(require("./comment.validation"));
+const router = (0, express_1.Router)({
+    mergeParams: true,
+});
+router.post("/create-comment", (0, authentication_middleware_1.authentication)(comment_authorization_1.endPoint.createComment), (0, cloud_multer_1.cloudFileUpload)({ validation: cloud_multer_1.fileValidation.images }).array("attachments", 3), (0, validationMiddleware_1.validation)(validator.crateCommentSchema), comment_service_1.default.createComment);
 exports.default = router;

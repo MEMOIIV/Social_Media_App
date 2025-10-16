@@ -85,6 +85,7 @@ const userSchema = new mongoose_1.default.Schema({
     deletedBy: { type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" },
     restoreAt: Date,
     restoreBy: { type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" },
+    friends: [{ type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" }],
 }, {
     timestamps: true,
     toJSON: { virtuals: true },
@@ -118,6 +119,15 @@ userSchema.post("save", async function (doc, next) {
             fullName: this.fullName,
             otp: that.confirmEmailPlanOTP,
         });
+    }
+});
+userSchema.pre(["find", "findOne"], async function () {
+    const query = this.getQuery();
+    if (query.paranoId === false) {
+        this.setQuery({ ...query });
+    }
+    else {
+        this.setQuery({ ...query, freezedAt: { $exists: false } });
     }
 });
 exports.UserModel = mongoose_1.default.models.User || mongoose_1.default.model("User", userSchema);

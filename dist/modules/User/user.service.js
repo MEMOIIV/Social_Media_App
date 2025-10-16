@@ -56,11 +56,15 @@ class UserService {
             Originalname,
             path: `users/${req.decoded?._id}`,
         });
+        const user = await this._userModel.updateOne({
+            filter: { _id: req.decoded?._id },
+            update: { profileImage: Key },
+        });
         return (0, successResponse_1.default)({
             res,
             statusCode: 201,
             message: "Profile image upload successfully",
-            data: { url, Key },
+            data: { url, Key, user },
         });
     };
     profileCoverImage = async (req, res) => {
@@ -69,11 +73,15 @@ class UserService {
             files: req.files,
             path: `users/${req.decoded?._id}/cover`,
         });
+        const user = await this._userModel.updateOne({
+            filter: { _id: req.decoded?._id },
+            update: { coverImages: urls },
+        });
         return (0, successResponse_1.default)({
             res,
             statusCode: 201,
             message: "Profile image upload successfully",
-            data: { urls },
+            data: { urls, user },
         });
     };
 }

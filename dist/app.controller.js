@@ -35,6 +35,7 @@ const bootstrap = async () => {
     const app = (0, express_1.default)();
     const port = Number(process.env.PORT) || 5000;
     app.use((0, cors_1.default)(), express_1.default.json(), (0, helmet_1.default)(), limiter);
+    app.use(express_1.default.urlencoded({ extended: true }));
     app.get("/", (req, res) => {
         res.status(200).json({ message: "Welcome to social media app from TS" });
     });

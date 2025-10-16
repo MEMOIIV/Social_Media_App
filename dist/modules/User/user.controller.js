@@ -23,5 +23,5 @@ router.patch("/profile-cover-image", (0, authentication_middleware_1.authenticat
     storageApproach: cloud_multer_1.StorageEnum.disk,
     validation: [...cloud_multer_1.fileValidation.images],
     maxsize: 3,
-}).array("attachment", 5), user_service_1.default.profileCoverImage);
+}).array("attachments", 5), user_service_1.default.profileCoverImage);
 exports.default = router;

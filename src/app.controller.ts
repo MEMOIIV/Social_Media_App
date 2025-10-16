@@ -47,6 +47,8 @@ export const bootstrap = async (): Promise<void> => {
   const app: Express = express();
   const port: number = Number(process.env.PORT as string) || 5000;
   app.use(cors(), express.json(), helmet(), limiter); // Global Middleware
+  app.use(express.urlencoded({ extended: true }));
+
 
   // 5. Health check route
   app.get("/", (req: Request, res: Response) => {

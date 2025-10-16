@@ -49,7 +49,7 @@ class DataBaseRepository {
         };
     }
     async findOne({ filter, select, options, }) {
-        const doc = this.model.findOne(filter).select(select || "");
+        const doc = this.model.findOne(filter, select, options);
         if (options?.populate) {
             doc.populate(options.populate);
         }

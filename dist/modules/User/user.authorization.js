@@ -7,4 +7,6 @@ exports.endPoint = {
     logout: [User_model_1.RoleEnum.user, User_model_1.RoleEnum.admin],
     refreshToken: [User_model_1.RoleEnum.user, User_model_1.RoleEnum.admin],
     profileImage: [User_model_1.RoleEnum.user, User_model_1.RoleEnum.admin],
+    friendRequest: [User_model_1.RoleEnum.user, User_model_1.RoleEnum.admin],
+    acceptRequest: [User_model_1.RoleEnum.user, User_model_1.RoleEnum.admin],
 };

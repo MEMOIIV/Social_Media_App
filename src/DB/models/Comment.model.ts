@@ -1,4 +1,5 @@
 import mongoose, { type HydratedDocument } from "mongoose";
+import { IPost } from "./Post.model";
 
 export interface IComment {
   content?: string;
@@ -8,7 +9,7 @@ export interface IComment {
   likes?: mongoose.Types.ObjectId[];
 
   commentCreatedBy: mongoose.Types.ObjectId;
-  postId: mongoose.Types.ObjectId;
+  postId: mongoose.Types.ObjectId | Partial<IPost>;
   commentId?: mongoose.Types.ObjectId;
 
   freezedAt?: Date;
@@ -49,7 +50,7 @@ const commentSchema = new mongoose.Schema<IComment>(
     },
     commentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Comment",
     },
     freezedAt: Date,
     freezedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

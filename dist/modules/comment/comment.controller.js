@@ -47,4 +47,5 @@ const router = (0, express_1.Router)({
     mergeParams: true,
 });
 router.post("/create-comment", (0, authentication_middleware_1.authentication)(comment_authorization_1.endPoint.createComment), (0, cloud_multer_1.cloudFileUpload)({ validation: cloud_multer_1.fileValidation.images }).array("attachments", 3), (0, validationMiddleware_1.validation)(validator.crateCommentSchema), comment_service_1.default.createComment);
+router.post("/:commentId/replay-comment", (0, authentication_middleware_1.authentication)(comment_authorization_1.endPoint.replayComment), (0, cloud_multer_1.cloudFileUpload)({ validation: cloud_multer_1.fileValidation.images }).array("attachments", 3), (0, validationMiddleware_1.validation)(validator.crateReplaySchema), comment_service_1.default.createReplay);
 exports.default = router;

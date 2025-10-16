@@ -26,7 +26,7 @@ router.post(
 
 // Create Replay
 router.post(
-  "/commentId/replay-comment",
+  "/:commentId/replay-comment",
   authentication(endPoint.replayComment),
   cloudFileUpload({ validation: fileValidation.images }).array(
     "attachments",

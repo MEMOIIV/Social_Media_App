@@ -7,7 +7,7 @@ const Post_model_1 = require("../../DB/models/Post.model");
 const User_model_1 = require("../../DB/models/User.model");
 const post_db_repository_1 = require("../../DB/repositories/post.db.repository");
 const user_db_repository_1 = require("../../DB/repositories/user.db.repository");
-const comment_db_repository_1 = require("../../DB/repositories/comment.db.repository.");
+const comment_db_repository_1 = require("../../DB/repositories/comment.db.repository");
 const Comment_model_1 = require("../../DB/models/Comment.model");
 const successResponse_1 = __importDefault(require("../../utils/successResponse"));
 const err_response_1 = require("../../utils/response/err.response");
@@ -67,6 +67,69 @@ class CommentService {
             statusCode: 201,
             message: "Comment created successfully",
             data: comment,
+        });
+    };
+    createReplay = async (req, res) => {
+        const { postId, commentId } = req.params;
+        const comment = await this._commentModel.findOne({
+            filter: {
+                _id: commentId,
+                postId,
+            },
+            options: {
+                populate: [
+                    {
+                        path: "postId",
+                        match: {
+                            allowComments: Post_model_1.AllowCommentsEnum.Allow,
+                            $or: (0, post_service_1.postAvailability)(req),
+                        },
+                    },
+                ],
+            },
+        });
+        if (!comment?.postId)
+            throw new err_response_1.NotFoundExceptions("Fail to match result");
+        if (req.body.tags?.length &&
+            (await this._userModel.find({ filter: { _id: { $in: req.body.tags } } }))
+                .length !== req.body.tags.length) {
+            throw new err_response_1.NotFoundExceptions("Some mentioned user dose not exists");
+        }
+        if (req.body.tags?.length) {
+            const uniqueTags = new Set(req.body.tags.map((tag) => tag.toString()));
+            if (uniqueTags.size !== req.body.tags.length)
+                throw new err_response_1.BadRequestExceptions("Duplicate tags are not allowed");
+        }
+        let attachments = [];
+        if (req.files?.length) {
+            const post = comment.postId;
+            attachments = await (0, s3_config_1.uploadFiles)({
+                files: req.files,
+                path: `users/${post.postCreatedBy}/post/${post.assetPostFolderId}`,
+            });
+        }
+        const [replay] = (await this._commentModel.create({
+            data: [
+                {
+                    ...req.body,
+                    attachments,
+                    postId,
+                    commentId,
+                    commentCreatedBy: req.user?._id,
+                },
+            ],
+        })) || [];
+        if (!replay) {
+            if (attachments.length) {
+                await (0, s3_config_1.deleteFiles)({ urls: attachments });
+            }
+            throw new err_response_1.BadRequestExceptions("Fail to create replay");
+        }
+        return (0, successResponse_1.default)({
+            res,
+            statusCode: 201,
+            message: "Replay created successfully",
+            data: replay,
         });
     };
 }

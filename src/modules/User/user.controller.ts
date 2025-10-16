@@ -3,13 +3,13 @@ import userService from "./user.service";
 import { authentication } from "../../middleware/authentication.middleware";
 import { endPoint } from "./user.authorization";
 import { validation } from "../../middleware/validationMiddleware";
-import { logoutSchema } from "./user.validation";
 import { TokenEnum } from "../../utils/security/token.utils";
 import {
   cloudFileUpload,
   fileValidation,
   StorageEnum,
 } from "../../utils/multer/cloud.multer";
+import * as validators from './user.validation'
 const router: Router = Router();
 router.get(
   "/profile",
@@ -18,7 +18,7 @@ router.get(
 );
 router.post(
   "/logout",
-  validation(logoutSchema),
+  validation(validators.logoutSchema),
   authentication(endPoint.logout),
   userService.logout
 );
@@ -49,5 +49,21 @@ router.patch(
     maxsize: 3,
   }).array("attachments" , 5),
   userService.profileCoverImage
+);
+
+// Friend Request
+router.post(
+  "/:userId/friend-request",
+  authentication(endPoint.friendRequest),
+  validation(validators.sendFriendRequestSchema),
+  userService.friendRequest
+);
+
+// Accept Friend Request 
+router.patch(
+  "/:requestId/accept-friend-request",
+  authentication(endPoint.acceptRequest),
+  validation(validators.acceptFriendRequestSchema),
+  userService.acceptRequest
 );
 export default router;

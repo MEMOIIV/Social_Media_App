@@ -29,7 +29,7 @@ const commentSchema = new mongoose_1.default.Schema({
     },
     commentId: {
         type: mongoose_1.default.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "Comment",
     },
     freezedAt: Date,
     freezedBy: { type: mongoose_1.default.Schema.Types.ObjectId, ref: "User" },

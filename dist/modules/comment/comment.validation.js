@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.crateCommentSchema = void 0;
+exports.crateReplaySchema = exports.crateCommentSchema = void 0;
 const zod_1 = __importDefault(require("zod"));
 const validationMiddleware_1 = require("../../middleware/validationMiddleware");
 const cloud_multer_1 = require("../../utils/multer/cloud.multer");
@@ -38,4 +38,10 @@ exports.crateCommentSchema = {
             });
         }
     }),
+};
+exports.crateReplaySchema = {
+    params: exports.crateCommentSchema.params.extend({
+        commentId: validationMiddleware_1.generalField.id,
+    }),
+    body: exports.crateCommentSchema.body,
 };

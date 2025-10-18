@@ -23,6 +23,8 @@ import {
   getFile,
 } from "./utils/multer/s3.config";
 import successResponse from "./utils/successResponse";
+import { type ExtendedError, Server, type Socket } from "socket.io";
+import { decodeToken } from "./utils/security/token.utils";
 
 const createS3WriteStreamPipe = promisify(pipeline);
 
@@ -48,7 +50,6 @@ export const bootstrap = async (): Promise<void> => {
   const port: number = Number(process.env.PORT as string) || 5000;
   app.use(cors(), express.json(), helmet(), limiter); // Global Middleware
   app.use(express.urlencoded({ extended: true }));
-
 
   // 5. Health check route
   app.get("/", (req: Request, res: Response) => {
@@ -151,7 +152,86 @@ export const bootstrap = async (): Promise<void> => {
   app.use(globalErrorHandler);
 
   // 10. Start server
-  app.listen(port, (): void => {
+  const httpServer = app.listen(port, (): void => {
     console.log(chalk.bgGreen(`Server is running on port ${port} `));
+  });
+
+  // 11. Socket.Io
+  const io = new Server(httpServer, {
+    cors: {
+      origin: "*",
+    },
+  });
+
+  // Event (socket.to.emit)
+  const connectedSockets = new Map<string, string>();
+
+  // Middleware Socket io
+  io.use(async (socket: Socket, next: (err?: ExtendedError) => void) => {
+
+    // Error handling with try and catch
+    try {
+      const token = socket.handshake?.auth.authorization || "";
+      const { user, decoded } = await decodeToken({ authorization: token });
+      connectedSockets.set(user._id.toString(), socket.id);
+      next();
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  io.on("connection", (socket: Socket) => {
+    console.log(chalk.black.bgMagentaBright(`User Channel: ${socket.id}`));
+    connectedSockets.get("user._id")
+    
+    // connectedSockets.push(socket.id);
+    // ACE
+    // socket.on("sayHi", (data, callback) => {
+    //   console.log({ data });
+    //   callback("Hello from socket io BE to FE");
+    // });
+
+    // emit
+    // socket.emit(
+    //   "product",
+    //   { product: "AS1245ad", productName: "laptop" },
+    //   (res: string) => {
+    //     console.log({ res });
+    //   }
+    // );
+
+    // broadcast
+    // socket.broadcast.emit(
+    //   "product",
+    //   { product: "AS1245ad", productName: "laptop" }
+    //   // (res: string) => {
+    //   //   console.log({ res });
+    //   // }
+    // );
+
+    // io.emit
+    // io.emit(
+    //   "product",
+    //   { product: "AS1245ad", productName: "laptop" }
+    // (res: string) => {
+    //   console.log({ res });
+    // }
+    // );
+
+    // socket.to.emit
+    // socket.to(connectedSockets[0] as string).emit(
+    //   "product",
+    //   { product: "AS1245ad", productName: "laptop" }
+    //   // (res: string) => {
+    //   //   console.log({ res });
+    //   // }
+    // );
+
+    // DisConnect
+
+    socket.on("disconnect", () => {
+      connectedSockets.delete("user._id")
+      console.log(chalk.black.bgRed(`Logout from ::: ${socket.id}`));
+    });
   });
 };

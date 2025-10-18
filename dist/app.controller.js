@@ -20,6 +20,7 @@ const node_util_1 = require("node:util");
 const node_stream_1 = require("node:stream");
 const s3_config_1 = require("./utils/multer/s3.config");
 const successResponse_1 = __importDefault(require("./utils/successResponse"));
+const socket_io_1 = require("socket.io");
 const createS3WriteStreamPipe = (0, node_util_1.promisify)(node_stream_1.pipeline);
 (0, dotenv_1.config)({ path: node_path_1.default.resolve("./config/.env.dev") });
 const limiter = (0, express_rate_limit_1.default)({
@@ -84,8 +85,28 @@ const bootstrap = async () => {
         res.status(404).json({ message: `Route not found: ${req.originalUrl}` });
     });
     app.use(err_response_1.globalErrorHandler);
-    app.listen(port, () => {
+    const httpServer = app.listen(port, () => {
         console.log(chalk_1.default.bgGreen(`Server is running on port ${port} `));
+    });
+    const io = new socket_io_1.Server(httpServer, {
+        cors: {
+            origin: "*",
+        },
+    });
+    io.use((socket, next) => {
+        try {
+            console.log(socket.handshake?.auth.authorization);
+            next();
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    io.on("connection", (socket) => {
+        console.log(chalk_1.default.black.bgMagentaBright(`User Channel: ${socket.id}`));
+        socket.on("disconnect", () => {
+            console.log(chalk_1.default.black.bgRed(`Logout from ::: ${socket.id}`));
+        });
     });
 };
 exports.bootstrap = bootstrap;

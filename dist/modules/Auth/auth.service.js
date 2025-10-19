@@ -121,6 +121,7 @@ class AuthenticationService {
                 accessToken,
                 refreshToken,
             },
+            message: "User Logged in successfully",
         });
     };
     confirmEmail = async (req, res) => {

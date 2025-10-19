@@ -18,10 +18,12 @@ class UserService {
     _friendModel = new friend_db_repository_1.FriendRepository(friendRequest_model_1.FriendModel);
     constructor() { }
     getProfile = async (req, res) => {
+        await req.user?.populate("friends");
         return (0, successResponse_1.default)({
             res,
             data: {
                 user: req.user,
+                decoded: req.decoded,
             },
         });
     };

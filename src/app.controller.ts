@@ -25,6 +25,8 @@ import {
 import successResponse from "./utils/successResponse";
 import { type ExtendedError, Server, type Socket } from "socket.io";
 import { decodeToken } from "./utils/security/token.utils";
+import { HUserModelDocument } from "./DB/models/User.model";
+import { JwtPayload } from "jsonwebtoken";
 
 const createS3WriteStreamPipe = promisify(pipeline);
 
@@ -163,27 +165,40 @@ export const bootstrap = async (): Promise<void> => {
     },
   });
 
+  // Extend Socket and add features
+  interface IAuthSocket extends Socket {
+    credentials?: {
+      user: Partial<HUserModelDocument>;
+      decoded: JwtPayload;
+    };
+  }
   // Event (socket.to.emit)
-  const connectedSockets = new Map<string, string>();
+  const connectedSockets = new Map<string, string[]>(); // value be string To assemble socket.id for multi tabs
 
   // Middleware Socket io
-  io.use(async (socket: Socket, next: (err?: ExtendedError) => void) => {
-
+  io.use(async (socket: IAuthSocket, next: (err?: ExtendedError) => void) => {
     // Error handling with try and catch
     try {
       const token = socket.handshake?.auth.authorization || "";
       const { user, decoded } = await decodeToken({ authorization: token });
-      connectedSockets.set(user._id.toString(), socket.id);
+
+      // multi tabs
+      const userTabs = connectedSockets.get(user._id.toString()) || []; // get all tabs
+      userTabs?.push(socket.id);
+      connectedSockets.set(user._id.toString(), userTabs);
+
+      // set credentials in IAuthSockets for make it shear
+      socket.credentials = { user, decoded };
       next();
     } catch (error: any) {
       next(error);
     }
   });
 
-  io.on("connection", (socket: Socket) => {
+  io.on("connection", (socket: IAuthSocket) => {
     console.log(chalk.black.bgMagentaBright(`User Channel: ${socket.id}`));
-    connectedSockets.get("user._id")
-    
+    console.log({ connectedSockets });
+
     // connectedSockets.push(socket.id);
     // ACE
     // socket.on("sayHi", (data, callback) => {
@@ -230,8 +245,24 @@ export const bootstrap = async (): Promise<void> => {
     // DisConnect
 
     socket.on("disconnect", () => {
-      connectedSockets.delete("user._id")
-      console.log(chalk.black.bgRed(`Logout from ::: ${socket.id}`));
+      // connectedSockets.delete(
+      //   socket.credentials?.user._id?.toString() as string
+      // );
+
+      // multi tabs
+      const userId = socket.credentials?.user._id?.toString() as string;
+      let remainingTabs =
+        connectedSockets.get(userId)?.filter((tab) => {
+          return tab !== socket.id;
+        }) || [];
+      if (remainingTabs.length) {
+        connectedSockets.set(userId, remainingTabs);
+      } else {
+        connectedSockets.delete(userId);
+      }
+      console.log(
+        chalk.black.bgRed(`Logout from ::: ${JSON.stringify([...connectedSockets])}`) // => [ userId, [ socketId1, socketId2, ... ] ]
+      );
     });
   });
 };

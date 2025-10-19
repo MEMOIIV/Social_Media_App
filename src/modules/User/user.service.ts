@@ -38,10 +38,12 @@ class UserService {
 
   // Get profile
   getProfile = async (req: Request, res: Response): Promise<Response> => {
+    await req.user?.populate("friends")
     return successResponse({
       res,
       data: {
         user: req.user,
+        decoded : req.decoded,
       },
     });
   };
@@ -198,6 +200,7 @@ class UserService {
     });
   };
 
+  // Accept Friend Request 
   acceptRequest = async (req: Request, res: Response): Promise<Response> => {
     const { requestId } = req.params as IAcceptParams;
 

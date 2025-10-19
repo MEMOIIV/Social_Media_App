@@ -3,6 +3,7 @@ import { ExtendedError, Server } from "socket.io";
 import { decodeToken } from "../../utils/security/token.utils";
 import { IAuthSocket } from "./gateway.dto";
 import chalk from "chalk";
+import { ChatGateway } from "../chat/chat.gateway";
 
 // connected with socket
 export const initialize = (httpServer: httpServer) => {
@@ -58,10 +59,15 @@ export const initialize = (httpServer: httpServer) => {
     });
   }
 
+  // Connection ChatGateway
+  const chatGateway: ChatGateway = new ChatGateway();
   // Connection io
   io.on("connection", (socket: IAuthSocket) => {
     console.log(chalk.black.bgMagentaBright(`User Channel: ${socket.id}`));
     console.log(connectedSockets);
+
+    // connected chatGateway
+    chatGateway.register(socket);
     
     // Disconnection io running
     disconnection(socket);

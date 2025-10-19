@@ -12,7 +12,7 @@ import {
   ConflictExceptions,
   NotFoundExceptions,
 } from "../../utils/response/err.response";
-import { comparHash, generateHash } from "../../utils/security/hash.utils";
+import { comparHash } from "../../utils/security/hash.utils";
 import { emailEvent } from "../../utils/events/email.event";
 import { generateOTP } from "../../utils/security/generateOTP.utils";
 import successResponse from "../../utils/successResponse";

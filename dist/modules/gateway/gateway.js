@@ -7,6 +7,7 @@ exports.initialize = void 0;
 const socket_io_1 = require("socket.io");
 const token_utils_1 = require("../../utils/security/token.utils");
 const chalk_1 = __importDefault(require("chalk"));
+const chat_gateway_1 = require("../chat/chat.gateway");
 const initialize = (httpServer) => {
     const io = new socket_io_1.Server(httpServer, {
         cors: {
@@ -43,9 +44,11 @@ const initialize = (httpServer) => {
             console.log(chalk_1.default.black.bgRed(`Logout from ::: ${JSON.stringify([...connectedSockets])}`));
         });
     }
+    const chatGateway = new chat_gateway_1.ChatGateway();
     io.on("connection", (socket) => {
         console.log(chalk_1.default.black.bgMagentaBright(`User Channel: ${socket.id}`));
         console.log(connectedSockets);
+        chatGateway.register(socket);
         disconnection(socket);
     });
 };

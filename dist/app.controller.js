@@ -20,8 +20,7 @@ const node_util_1 = require("node:util");
 const node_stream_1 = require("node:stream");
 const s3_config_1 = require("./utils/multer/s3.config");
 const successResponse_1 = __importDefault(require("./utils/successResponse"));
-const socket_io_1 = require("socket.io");
-const token_utils_1 = require("./utils/security/token.utils");
+const gateway_1 = require("./modules/gateway/gateway");
 const createS3WriteStreamPipe = (0, node_util_1.promisify)(node_stream_1.pipeline);
 (0, dotenv_1.config)({ path: node_path_1.default.resolve("./config/.env.dev") });
 const limiter = (0, express_rate_limit_1.default)({
@@ -89,42 +88,6 @@ const bootstrap = async () => {
     const httpServer = app.listen(port, () => {
         console.log(chalk_1.default.bgGreen(`Server is running on port ${port} `));
     });
-    const io = new socket_io_1.Server(httpServer, {
-        cors: {
-            origin: "*",
-        },
-    });
-    const connectedSockets = new Map();
-    io.use(async (socket, next) => {
-        try {
-            const token = socket.handshake?.auth.authorization || "";
-            const { user, decoded } = await (0, token_utils_1.decodeToken)({ authorization: token });
-            const userTabs = connectedSockets.get(user._id.toString()) || [];
-            userTabs?.push(socket.id);
-            connectedSockets.set(user._id.toString(), userTabs);
-            socket.credentials = { user, decoded };
-            next();
-        }
-        catch (error) {
-            next(error);
-        }
-    });
-    io.on("connection", (socket) => {
-        console.log(chalk_1.default.black.bgMagentaBright(`User Channel: ${socket.id}`));
-        console.log({ connectedSockets });
-        socket.on("disconnect", () => {
-            const userId = socket.credentials?.user._id?.toString();
-            let remainingTabs = connectedSockets.get(userId)?.filter((tab) => {
-                return tab !== socket.id;
-            }) || [];
-            if (remainingTabs.length) {
-                connectedSockets.set(userId, remainingTabs);
-            }
-            else {
-                connectedSockets.delete(userId);
-            }
-            console.log(chalk_1.default.black.bgRed(`Logout from ::: ${JSON.stringify([...connectedSockets])}`));
-        });
-    });
+    (0, gateway_1.initialize)(httpServer);
 };
 exports.bootstrap = bootstrap;

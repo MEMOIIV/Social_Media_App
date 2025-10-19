@@ -23,10 +23,7 @@ import {
   getFile,
 } from "./utils/multer/s3.config";
 import successResponse from "./utils/successResponse";
-import { type ExtendedError, Server, type Socket } from "socket.io";
-import { decodeToken } from "./utils/security/token.utils";
-import { HUserModelDocument } from "./DB/models/User.model";
-import { JwtPayload } from "jsonwebtoken";
+import { initialize } from "./modules/gateway/gateway";
 
 const createS3WriteStreamPipe = promisify(pipeline);
 
@@ -158,111 +155,6 @@ export const bootstrap = async (): Promise<void> => {
     console.log(chalk.bgGreen(`Server is running on port ${port} `));
   });
 
-  // 11. Socket.Io
-  const io = new Server(httpServer, {
-    cors: {
-      origin: "*",
-    },
-  });
-
-  // Extend Socket and add features
-  interface IAuthSocket extends Socket {
-    credentials?: {
-      user: Partial<HUserModelDocument>;
-      decoded: JwtPayload;
-    };
-  }
-  // Event (socket.to.emit)
-  const connectedSockets = new Map<string, string[]>(); // value be string To assemble socket.id for multi tabs
-
-  // Middleware Socket io
-  io.use(async (socket: IAuthSocket, next: (err?: ExtendedError) => void) => {
-    // Error handling with try and catch
-    try {
-      const token = socket.handshake?.auth.authorization || "";
-      const { user, decoded } = await decodeToken({ authorization: token });
-
-      // multi tabs
-      const userTabs = connectedSockets.get(user._id.toString()) || []; // get all tabs
-      userTabs?.push(socket.id);
-      connectedSockets.set(user._id.toString(), userTabs);
-
-      // set credentials in IAuthSockets for make it shear
-      socket.credentials = { user, decoded };
-      next();
-    } catch (error: any) {
-      next(error);
-    }
-  });
-
-  io.on("connection", (socket: IAuthSocket) => {
-    console.log(chalk.black.bgMagentaBright(`User Channel: ${socket.id}`));
-    console.log({ connectedSockets });
-
-    // connectedSockets.push(socket.id);
-    // ACE
-    // socket.on("sayHi", (data, callback) => {
-    //   console.log({ data });
-    //   callback("Hello from socket io BE to FE");
-    // });
-
-    // emit
-    // socket.emit(
-    //   "product",
-    //   { product: "AS1245ad", productName: "laptop" },
-    //   (res: string) => {
-    //     console.log({ res });
-    //   }
-    // );
-
-    // broadcast
-    // socket.broadcast.emit(
-    //   "product",
-    //   { product: "AS1245ad", productName: "laptop" }
-    //   // (res: string) => {
-    //   //   console.log({ res });
-    //   // }
-    // );
-
-    // io.emit
-    // io.emit(
-    //   "product",
-    //   { product: "AS1245ad", productName: "laptop" }
-    // (res: string) => {
-    //   console.log({ res });
-    // }
-    // );
-
-    // socket.to.emit
-    // socket.to(connectedSockets[0] as string).emit(
-    //   "product",
-    //   { product: "AS1245ad", productName: "laptop" }
-    //   // (res: string) => {
-    //   //   console.log({ res });
-    //   // }
-    // );
-
-    // DisConnect
-
-    socket.on("disconnect", () => {
-      // connectedSockets.delete(
-      //   socket.credentials?.user._id?.toString() as string
-      // );
-
-      // multi tabs
-      const userId = socket.credentials?.user._id?.toString() as string;
-      let remainingTabs =
-        connectedSockets.get(userId)?.filter((tab) => {
-          return tab !== socket.id;
-        }) || [];
-      if (remainingTabs.length) {
-        connectedSockets.set(userId, remainingTabs);
-      } else {
-        connectedSockets.delete(userId);
-      }
-      console.log(
-        chalk.black.bgRed(`Logout from ::: ${JSON.stringify([...connectedSockets])}`) // => [ userId, [ socketId1, socketId2, ... ] ]
-      );
-    });
-  });
+  // 11. Socket io
+  initialize(httpServer);
 };

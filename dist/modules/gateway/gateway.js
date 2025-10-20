@@ -3,13 +3,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initialize = void 0;
+exports.getIo = exports.initialize = void 0;
 const socket_io_1 = require("socket.io");
 const token_utils_1 = require("../../utils/security/token.utils");
 const chalk_1 = __importDefault(require("chalk"));
 const chat_gateway_1 = require("../chat/chat.gateway");
+let io = null;
 const initialize = (httpServer) => {
-    const io = new socket_io_1.Server(httpServer, {
+    io = new socket_io_1.Server(httpServer, {
         cors: {
             origin: "*",
         },
@@ -48,8 +49,14 @@ const initialize = (httpServer) => {
     io.on("connection", (socket) => {
         console.log(chalk_1.default.black.bgMagentaBright(`User Channel: ${socket.id}`));
         console.log(connectedSockets);
-        chatGateway.register(socket);
+        chatGateway.register(socket, (0, exports.getIo)());
         disconnection(socket);
     });
 };
 exports.initialize = initialize;
+const getIo = () => {
+    if (!io)
+        throw new Error("socket io not initialized");
+    return io;
+};
+exports.getIo = getIo;

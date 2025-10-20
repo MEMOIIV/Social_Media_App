@@ -5,10 +5,11 @@ import { IAuthSocket } from "./gateway.dto";
 import chalk from "chalk";
 import { ChatGateway } from "../chat/chat.gateway";
 
+let io: Server | null = null;
 // connected with socket
 export const initialize = (httpServer: httpServer) => {
   // setup Socket.IO server to handle client connections
-  const io = new Server(httpServer, {
+  io = new Server(httpServer, {
     cors: {
       origin: "*",
     },
@@ -67,9 +68,14 @@ export const initialize = (httpServer: httpServer) => {
     console.log(connectedSockets);
 
     // connected chatGateway
-    chatGateway.register(socket);
-    
+    chatGateway.register(socket, getIo());
+
     // Disconnection io running
     disconnection(socket);
   });
+};
+
+export const getIo = (): Server => {
+  if (!io) throw new Error("socket io not initialized");
+  return io;
 };

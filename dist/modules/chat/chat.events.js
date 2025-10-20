@@ -8,9 +8,14 @@ const chat_service_1 = __importDefault(require("./chat.service"));
 class ChatEvents {
     _chatService = chat_service_1.default;
     constructor() { }
-    sayHi = (socket) => {
+    sayHi = (socket, io) => {
         return socket.on("sayHi", (message, callback) => {
-            this._chatService.sayHi({ socket, message, callback });
+            this._chatService.sayHi({ socket, message, callback, io });
+        });
+    };
+    sendMessage = (socket, io) => {
+        return socket.on("sendMessage", (data) => {
+            this._chatService.sendMessage({ ...data, socket, io });
         });
     };
 }

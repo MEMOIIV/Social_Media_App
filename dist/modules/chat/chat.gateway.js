@@ -5,8 +5,9 @@ const chat_events_1 = require("./chat.events");
 class ChatGateway {
     _chatEvents = new chat_events_1.ChatEvents();
     constructor() { }
-    register = (socket) => {
-        this._chatEvents.sayHi(socket);
+    register = (socket, io) => {
+        this._chatEvents.sayHi(socket, io);
+        this._chatEvents.sendMessage(socket, io);
     };
 }
 exports.ChatGateway = ChatGateway;

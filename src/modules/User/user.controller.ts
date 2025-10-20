@@ -10,7 +10,13 @@ import {
   StorageEnum,
 } from "../../utils/multer/cloud.multer";
 import * as validators from './user.validation'
+import chatRouter from '../chat/chat.controller'
 const router: Router = Router();
+
+// Nested comment routes (handle chat for a specific user)
+router.use("/:userId/chat", chatRouter);
+
+// User routes ( fetch User , and update )
 router.get(
   "/profile",
   authentication(endPoint.profile),

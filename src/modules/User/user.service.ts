@@ -29,21 +29,34 @@ import {
 } from "../../utils/response/err.response";
 import { FriendRepository } from "../../DB/repositories/friend.db.repository";
 import { Types } from "mongoose";
+import { ChatRepository } from "../../DB/repositories/chat.db.repository";
+import { ChatModel } from "../../DB/models/Chat.model";
 
 class UserService {
   private _userModel = new UserRepository(UserModel);
   private _friendModel = new FriendRepository(FriendModel);
+  private _chatModel = new ChatRepository(ChatModel);
 
   constructor() {}
 
   // Get profile
   getProfile = async (req: Request, res: Response): Promise<Response> => {
-    await req.user?.populate("friends")
+    await req.user?.populate("friends");
+
+    const groups = await this._chatModel.find({
+      filter: {
+        participants: { $in: [req.user?._id as Types.ObjectId] },
+        group: { $exists: true },
+      },
+    });
+
+    if(!groups) throw new NotFoundExceptions("Failed to find groups")
     return successResponse({
       res,
       data: {
         user: req.user,
-        decoded : req.decoded,
+        decoded: req.decoded,
+        groups,
       },
     });
   };
@@ -200,7 +213,7 @@ class UserService {
     });
   };
 
-  // Accept Friend Request 
+  // Accept Friend Request
   acceptRequest = async (req: Request, res: Response): Promise<Response> => {
     const { requestId } = req.params as IAcceptParams;
 

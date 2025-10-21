@@ -17,6 +17,7 @@ import { v4 as uuid } from "uuid";
 import { likePostQueryDTO, updatePostParamsDto } from "./post.dto";
 import { Types, type UpdateQuery } from "mongoose";
 import { getPostsSchema } from "./post.validation";
+import { connectedSockets, getIo } from "../gateway/gateway";
 
 export const postAvailability = (req: Request) => {
   return [
@@ -125,6 +126,16 @@ class PostService {
     if (!post) {
       throw new NotFoundExceptions("post dose not exists");
     }
+    // socket io
+    const receivers = connectedSockets.get(post.createdBy?.toString()) || [];
+    if (action !== ActionEnum.unLike) {
+      for (const socketId of receivers) {
+        getIo()
+          .to(socketId)
+          .emit("likePost", { postId, userId: req.user?._id });
+      }
+    }
+
     return successResponse({
       res,
       statusCode: 200,
@@ -232,13 +243,13 @@ class PostService {
       limit, // key same value
     });
 
-      if (!posts?.result?.length) {
-        return successResponse({
-          res,
-          data: [],
-          message: "No more posts available",
-        });
-      }
+    if (!posts?.result?.length) {
+      return successResponse({
+        res,
+        data: [],
+        message: "No more posts available",
+      });
+    }
 
     return successResponse({ res, data: posts });
   };

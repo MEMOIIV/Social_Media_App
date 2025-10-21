@@ -8,6 +8,8 @@ class ChatGateway {
     register = (socket, io) => {
         this._chatEvents.sayHi(socket, io);
         this._chatEvents.sendMessage(socket, io);
+        this._chatEvents.joinRoom(socket, io);
+        this._chatEvents.sendGroupMessage(socket, io);
     };
 }
 exports.ChatGateway = ChatGateway;

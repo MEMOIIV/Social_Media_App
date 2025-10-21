@@ -14,6 +14,7 @@ const s3_config_1 = require("../../utils/multer/s3.config");
 const uuid_1 = require("uuid");
 const mongoose_1 = require("mongoose");
 const post_validation_1 = require("./post.validation");
+const gateway_1 = require("../gateway/gateway");
 const postAvailability = (req) => {
     return [
         { availability: Post_model_1.AvailabilityEnum.Public },
@@ -96,6 +97,14 @@ class PostService {
         });
         if (!post) {
             throw new err_response_1.NotFoundExceptions("post dose not exists");
+        }
+        const receivers = gateway_1.connectedSockets.get(post.createdBy?.toString()) || [];
+        if (action !== Post_model_1.ActionEnum.unLike) {
+            for (const socketId of receivers) {
+                (0, gateway_1.getIo)()
+                    .to(socketId)
+                    .emit("likePost", { postId, userId: req.user?._id });
+            }
         }
         return (0, successResponse_1.default)({
             res,

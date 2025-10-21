@@ -13,17 +13,29 @@ const friendRequest_model_1 = require("../../DB/models/friendRequest.model");
 const err_response_1 = require("../../utils/response/err.response");
 const friend_db_repository_1 = require("../../DB/repositories/friend.db.repository");
 const mongoose_1 = require("mongoose");
+const chat_db_repository_1 = require("../../DB/repositories/chat.db.repository");
+const Chat_model_1 = require("../../DB/models/Chat.model");
 class UserService {
     _userModel = new user_db_repository_1.UserRepository(User_model_1.UserModel);
     _friendModel = new friend_db_repository_1.FriendRepository(friendRequest_model_1.FriendModel);
+    _chatModel = new chat_db_repository_1.ChatRepository(Chat_model_1.ChatModel);
     constructor() { }
     getProfile = async (req, res) => {
         await req.user?.populate("friends");
+        const groups = await this._chatModel.find({
+            filter: {
+                participants: { $in: [req.user?._id] },
+                group: { $exists: true },
+            },
+        });
+        if (!groups)
+            throw new err_response_1.NotFoundExceptions("Failed to find groups");
         return (0, successResponse_1.default)({
             res,
             data: {
                 user: req.user,
                 decoded: req.decoded,
+                groups,
             },
         });
     };

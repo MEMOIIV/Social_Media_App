@@ -9,6 +9,7 @@ import connectDB from "./DB/connection.db";
 import authRouter from "./modules/Auth/auth.controller";
 import userRouter from "./modules/User/user.controller";
 import postRouter from "./modules/Post/post.controller";
+import chatRouter from "./modules/chat/chat.controller";
 import { config } from "dotenv";
 import path from "node:path";
 import cors from "cors";
@@ -59,6 +60,7 @@ export const bootstrap = async (): Promise<void> => {
   app.use("/api/auth", authRouter);
   app.use("/api/user", userRouter);
   app.use("/api/post", postRouter);
+  app.use("/api/chat", chatRouter);
 
   // 7. S3 service routes
   // Delete File

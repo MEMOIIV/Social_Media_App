@@ -6,6 +6,10 @@ import chalk from "chalk";
 import { ChatGateway } from "../chat/chat.gateway";
 
 let io: Server | null = null;
+
+// Event (socket.to.emit) => send event to all clients except the current one
+export const connectedSockets = new Map<string, string[]>(); // value be string To assemble socket.id for multi tabs
+
 // connected with socket
 export const initialize = (httpServer: httpServer) => {
   // setup Socket.IO server to handle client connections
@@ -14,9 +18,6 @@ export const initialize = (httpServer: httpServer) => {
       origin: "*",
     },
   });
-
-  // Event (socket.to.emit) => send event to all clients except the current one
-  const connectedSockets = new Map<string, string[]>(); // value be string To assemble socket.id for multi tabs
 
   // Middleware Socket io
   io.use(async (socket: IAuthSocket, next: (err?: ExtendedError) => void) => {

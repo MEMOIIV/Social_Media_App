@@ -9,5 +9,7 @@ export class ChatGateway {
   register = (socket: IAuthSocket, io: Server) => {
     this._chatEvents.sayHi(socket , io);
     this._chatEvents.sendMessage(socket , io);
+    this._chatEvents.joinRoom(socket , io);
+    this._chatEvents.sendGroupMessage(socket , io);
   };
 }

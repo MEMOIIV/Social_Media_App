@@ -42,8 +42,11 @@ const chat_authorization_1 = require("./chat.authorization");
 const validationMiddleware_1 = require("../../middleware/validationMiddleware");
 const validators = __importStar(require("./chat.validation"));
 const chat_service_1 = __importDefault(require("./chat.service"));
+const cloud_multer_1 = require("../../utils/multer/cloud.multer");
 const router = (0, express_1.Router)({
     mergeParams: true,
 });
 router.get("/", (0, authentication_middleware_1.authentication)(chat_authorization_1.endPoint.getChat), (0, validationMiddleware_1.validation)(validators.chatSchema), chat_service_1.default.getChat);
+router.post("/create-group", (0, authentication_middleware_1.authentication)(chat_authorization_1.endPoint.createGroupChat), (0, cloud_multer_1.cloudFileUpload)({ validation: [...cloud_multer_1.fileValidation.images] }).single("attachment"), (0, validationMiddleware_1.validation)(validators.groupChatSchema), chat_service_1.default.createGroupChat);
+router.get("/group/:groupId", (0, authentication_middleware_1.authentication)(chat_authorization_1.endPoint.GetGroupChat), (0, validationMiddleware_1.validation)(validators.getGroupChatSchema), chat_service_1.default.getGroupChat);
 exports.default = router;

@@ -44,6 +44,7 @@ export const initialize = (httpServer: httpServer) => {
     socket.on("disconnect", () => {
       // multi tabs
       const userId = socket.credentials?.user._id?.toString() as string;
+      if (!userId) return;
       let remainingTabs =
         connectedSockets.get(userId)?.filter((tab) => {
           return tab !== socket.id;
@@ -51,7 +52,9 @@ export const initialize = (httpServer: httpServer) => {
       if (remainingTabs.length) {
         connectedSockets.set(userId, remainingTabs);
       } else {
+        // Remove user from connected sockets and notify others that the user went offline
         connectedSockets.delete(userId);
+        socket.broadcast.emit("userStatusChanged", { userId, online: false });
       }
       console.log(
         chalk.black.bgRed(
@@ -65,13 +68,28 @@ export const initialize = (httpServer: httpServer) => {
   const chatGateway: ChatGateway = new ChatGateway();
   // Connection io
   io.on("connection", (socket: IAuthSocket) => {
-    console.log(chalk.black.bgMagentaBright(`User Channel: ${socket.id}`));
+    const userId = socket.credentials?.user?._id?.toString();
+    if (!userId) return;
+    console.log(chalk.black.bgMagentaBright(`User Connected: ${userId}`));
     console.log(connectedSockets);
+
+    // Add user
+    const tabs = connectedSockets.get(userId) || [];
+    connectedSockets.set(userId, [...tabs, socket.id]);
+
+    // Broadcast to others that user came online
+    socket.broadcast.emit("userStatusChanged", { userId, online: true });
+
+    // Send the newly connected user a list of all online users
+    const onlineUsers = [...connectedSockets.keys()].filter(
+      (id) => id !== userId
+    );
+    socket.emit("onlineUsersList", onlineUsers);
 
     // connected chatGateway
     chatGateway.register(socket, getIo());
 
-    // Disconnection io running
+    // disconnect handler
     disconnection(socket);
   });
 };

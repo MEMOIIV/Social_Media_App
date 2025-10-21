@@ -33,6 +33,8 @@ const initialize = (httpServer) => {
     function disconnection(socket) {
         socket.on("disconnect", () => {
             const userId = socket.credentials?.user._id?.toString();
+            if (!userId)
+                return;
             let remainingTabs = exports.connectedSockets.get(userId)?.filter((tab) => {
                 return tab !== socket.id;
             }) || [];
@@ -41,14 +43,23 @@ const initialize = (httpServer) => {
             }
             else {
                 exports.connectedSockets.delete(userId);
+                socket.broadcast.emit("userStatusChanged", { userId, online: false });
             }
             console.log(chalk_1.default.black.bgRed(`Logout from ::: ${JSON.stringify([...exports.connectedSockets])}`));
         });
     }
     const chatGateway = new chat_gateway_1.ChatGateway();
     io.on("connection", (socket) => {
-        console.log(chalk_1.default.black.bgMagentaBright(`User Channel: ${socket.id}`));
+        const userId = socket.credentials?.user?._id?.toString();
+        if (!userId)
+            return;
+        console.log(chalk_1.default.black.bgMagentaBright(`User Connected: ${userId}`));
         console.log(exports.connectedSockets);
+        const tabs = exports.connectedSockets.get(userId) || [];
+        exports.connectedSockets.set(userId, [...tabs, socket.id]);
+        socket.broadcast.emit("userStatusChanged", { userId, online: true });
+        const onlineUsers = [...exports.connectedSockets.keys()].filter((id) => id !== userId);
+        socket.emit("onlineUsersList", onlineUsers);
         chatGateway.register(socket, (0, exports.getIo)());
         disconnection(socket);
     });

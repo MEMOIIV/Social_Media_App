@@ -11,5 +11,8 @@ export class ChatGateway {
     this._chatEvents.sendMessage(socket , io);
     this._chatEvents.joinRoom(socket , io);
     this._chatEvents.sendGroupMessage(socket , io);
+    this._chatEvents.typing(socket , io);
+    this._chatEvents.typingGroup(socket, io);
+
   };
 }

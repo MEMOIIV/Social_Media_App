@@ -28,5 +28,22 @@ class ChatEvents {
             this._chatService.sendGroupMessage({ ...data, socket, io });
         });
     };
+    typing = (socket, io) => {
+        socket.on("typing", (data) => {
+            this._chatService.userTyping({ ...data, socket, io });
+        });
+        socket.on("stopTyping", (data) => {
+            this._chatService.userStopTyping({ ...data, socket, io });
+        });
+    };
+    typingGroup = (socket, io) => {
+        socket.on("typingGroup", (data) => {
+            console.log("New socket connected:", socket.id);
+            this._chatService.userTypingGroup({ ...data, socket, io });
+        });
+        socket.on("stopTypingGroup", (data) => {
+            this._chatService.userStopTypingGroup({ ...data, socket, io });
+        });
+    };
 }
 exports.ChatEvents = ChatEvents;

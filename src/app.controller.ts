@@ -74,24 +74,6 @@ export const bootstrap = async (): Promise<void> => {
     });
   });
 
-  // Delete Files
-  // app.get("/test", async (req: Request, res: Response) => {
-  //   const results = await deleteFiles({
-  //     urls: [
-  //       "Social_Media_App/users/68d3e9b303e39766a4263deb/cover/5f03d028-2c84-4b0e-9ef9-f39c9d31c9d0-pyramid.jpg",
-  //       "Social_Media_App/users/68d3e9b303e39766a4263deb/cover/7d5a2c63-f03d-4269-a8d7-f26390de73b2-bird.jpg",
-  //       "Social_Media_App/users/68d3e9b303e39766a4263deb/cover/a6761a97-2924-4b0d-8aa1-9b95b6dae3a9-boat.png",
-  //     ],
-  //   });
-  //   return successResponse({
-  //     res,
-  //     data: { results },
-  //     message: "Deleted files success",
-  //   });
-  // });
-
-  // list Directory Files
-
   app.get("/list-deleted-files", async (req: Request, res: Response) => {
     await deleteFolderByPrefix({ path: `users/` });
     return successResponse({ res });

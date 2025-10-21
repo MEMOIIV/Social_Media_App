@@ -13,22 +13,37 @@ export interface ISayHiDTO {
   callback: any;
   io: Server;
 }
+
 export interface IMessageDTO {
   socket: IAuthSocket;
   content: string;
   sendTo: string;
   io: Server;
 }
+
 export interface IJoinRoomDTO {
   socket: IAuthSocket;
   io: Server;
   roomId: string;
 }
+
 export interface ISendGroupMessageDTO {
   socket: IAuthSocket;
   io: Server;
-  content : string;
-  groupId : string;
+  content: string;
+  groupId: string;
+}
+
+export interface ITypingChatDTO {
+  to: string;
+  socket: IAuthSocket;
+  io: Server;
+}
+
+export interface ITypingGroupDTO {
+  groupId: string;
+  socket: IAuthSocket;
+  io: Server;
 }
 
 export type IGwtChatParams = z.infer<typeof chatSchema.params>;

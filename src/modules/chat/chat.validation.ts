@@ -34,3 +34,13 @@ export const getGroupChatSchema = {
     groupId: generalField.id,
   }),
 };
+
+// socketIo send data in payload
+export const chatMessageSchema = z.strictObject({
+  content: z.string().min(1, "Message cannot be empty"),
+  sendTo: z.string().min(1, "Recipient ID is required"),
+});
+
+export const chatGroupMessageSchema = z.strictObject({
+  content: z.string().min(1, "Message cannot be empty"),
+});

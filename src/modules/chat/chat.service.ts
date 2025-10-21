@@ -7,6 +7,8 @@ import {
   IMessageDTO,
   ISayHiDTO,
   ISendGroupMessageDTO,
+  ITypingChatDTO,
+  ITypingGroupDTO,
 } from "./chat.dto";
 import { UserRepository } from "../../DB/repositories/user.db.repository";
 import { UserModel } from "../../DB/models/User.model";
@@ -20,6 +22,8 @@ import successResponse from "../../utils/successResponse";
 import { Types } from "mongoose";
 import { v4 as uuid } from "uuid";
 import { deleteFile, uploadFile } from "../../utils/multer/s3.config";
+import { connectedSockets } from "../gateway/gateway";
+import { chatGroupMessageSchema, chatMessageSchema } from "./chat.validation";
 
 class ChatService {
   private _userModel = new UserRepository(UserModel);
@@ -115,7 +119,7 @@ class ChatService {
     const { groupId } = req.params as IGetGroupChatParams;
 
     // find group chat by groupId and include logged-in user
-    const group = await this._chatModel.findOne({
+    const chat = await this._chatModel.findOne({
       filter: {
         _id: Types.ObjectId.createFromHexString(groupId),
         group: { $exists: true },
@@ -127,16 +131,15 @@ class ChatService {
     });
 
     // check if the group chat exists
-    if (!group) throw new NotFoundExceptions("failed to find group");
+    if (!chat) throw new NotFoundExceptions("failed to find group");
 
     // send success response with group data
-    successResponse({ res, data: { group } });
+    successResponse({ res, data: { chat } });
   };
 
   // SOCKET IO
   sayHi = ({ socket, message, callback, io }: ISayHiDTO) => {
     try {
-      console.log(message);
       callback ? callback("I received your message") : undefined;
     } catch (error) {
       socket.emit("custom_error", error);
@@ -145,10 +148,15 @@ class ChatService {
 
   sendMessage = async ({ content, sendTo, socket, io }: IMessageDTO) => {
     try {
+      const { content: validContent, sendTo: validSendTo } =
+        chatMessageSchema.parse({
+          content,
+          sendTo,
+        });
       const createdBy = socket.credentials?.user?._id as Types.ObjectId;
       const user = await this._userModel.findOne({
         filter: {
-          _id: Types.ObjectId.createFromHexString(sendTo),
+          _id: Types.ObjectId.createFromHexString(validSendTo),
           friends: { $in: [createdBy] },
         },
       });
@@ -159,31 +167,31 @@ class ChatService {
       const chat = await this._chatModel.findOneAndUpdate({
         filter: {
           participants: {
-            $all: [createdBy, Types.ObjectId.createFromHexString(sendTo)],
+            $all: [createdBy, Types.ObjectId.createFromHexString(validSendTo)],
           },
           group: { $exists: false },
         },
         update: {
           $addToSet: {
             messages: {
-              content, // key same value
+              content: validContent, // key same value
               createdBy,
             },
           },
         },
       });
 
-      // if chat not exists
+      // if chat not exists create new chat
       if (!chat) {
         const [newChat] =
           (await this._chatModel.create({
             data: [
               {
                 createdBy,
-                messages: [{ content, createdBy }],
+                messages: [{ content: validContent, createdBy }],
                 participants: [
                   createdBy,
-                  Types.ObjectId.createFromHexString(sendTo),
+                  Types.ObjectId.createFromHexString(validSendTo),
                 ],
               },
             ],
@@ -193,8 +201,11 @@ class ChatService {
           throw new BadRequestExceptions("Fail to created new chat");
       }
 
-      io?.emit("successMessage", { content });
-      io?.emit("newMessage", { content, from: socket.credentials?.user });
+      io?.emit("successMessage", { content: validContent });
+      io?.emit("newMessage", {
+        content: validContent,
+        from: socket.credentials?.user,
+      });
     } catch (error) {
       socket.emit("custom_error", error);
     }
@@ -227,6 +238,9 @@ class ChatService {
     io,
   }: ISendGroupMessageDTO) => {
     try {
+      const { content: validContent } = chatGroupMessageSchema.parse({
+        content,
+      });
       // get ths user create message
       const createdBy = socket.credentials?.user?._id as Types.ObjectId;
 
@@ -239,7 +253,7 @@ class ChatService {
         update: {
           $addToSet: {
             messages: {
-              content,
+              content: validContent,
               createdBy,
             },
           },
@@ -247,10 +261,104 @@ class ChatService {
       });
       if (!chat) throw new BadRequestExceptions("Failed to create message");
 
-      io?.emit("successMessage", { content }); 
+      io?.emit("successMessage", { content: validContent });
     } catch (error) {
       socket.emit("custom_error", error);
     }
+  };
+
+  // Typing Chat OVO
+  userTyping = async ({ to, socket, io }: ITypingChatDTO) => {
+    try {
+      const fromUser = socket.credentials?.user;
+      if (!fromUser || !to) return;
+
+      const receivers = connectedSockets.get(to);
+      if (!receivers?.length) return;
+
+      io.to(receivers).emit("userTyping", {
+        from: fromUser._id,
+        fullName: fromUser.fullName,
+      });
+    } catch (error) {
+      socket.emit("custom_error", { message: "Error in userTyping", error });
+    }
+  };
+
+  userStopTyping = async ({ to, socket, io }: ITypingChatDTO) => {
+    try {
+      const fromUser = socket.credentials?.user;
+      if (!fromUser || !to) return;
+
+      const receivers = connectedSockets.get(to);
+      if (!receivers?.length) return;
+
+      io.to(receivers).emit("userStopTyping", {
+        from: fromUser._id,
+      });
+    } catch (error) {
+      socket.emit("custom_error", {
+        message: "Error in userStopTyping",
+        error,
+      });
+    }
+  };
+
+  // Typing Group OMV
+  userTypingGroup = async ({ groupId, socket, io }: ITypingGroupDTO) => {
+    const fromUser = socket.credentials?.user;
+    if (!fromUser || !groupId || !fromUser._id) return;
+
+    const groupChat = await this._chatModel.findById({
+      id: new Types.ObjectId(groupId),
+      options: { populate: ["messages.createdBy"] },
+    });
+
+    console.log(groupChat);
+
+    if (!groupChat) return;
+
+    const otherParticipants = groupChat.participants.filter(
+      (id: Types.ObjectId) => id.toString() !== fromUser._id?.toString()
+    );
+
+    otherParticipants.forEach((participantId: Types.ObjectId) => {
+      const receivers = connectedSockets.get(participantId.toString());
+      console.log("Sending typing to:", participantId.toString(), "receivers:", receivers);
+
+      if (receivers?.length) {
+        io.to(receivers).emit("userTypingGroup", {
+          from: fromUser._id,
+          fullName: fromUser.fullName,
+        });
+      }
+    });
+  };
+
+  userStopTypingGroup = async ({ groupId, socket, io }: ITypingGroupDTO) => {
+    const fromUser = socket.credentials?.user;
+    if (!fromUser || !groupId || !fromUser._id) return;
+
+    const groupChat = await this._chatModel.findById({
+      id: new Types.ObjectId(groupId),
+    });
+
+    console.log(groupChat);
+    if (!groupChat) return;
+
+    const otherParticipants = groupChat.participants.filter(
+      (id: Types.ObjectId) => id.toString() !== fromUser._id?.toString()
+    );
+
+    otherParticipants.forEach((participantId: Types.ObjectId) => {
+      const receivers = connectedSockets.get(participantId.toString());
+      if (receivers?.length) {
+        io.to(receivers).emit("userStopTypingGroup", {
+          from: fromUser._id,
+          fullName: fromUser.fullName,
+        });
+      }
+    });
   };
 }
 
